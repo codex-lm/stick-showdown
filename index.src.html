@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Stick Showdown</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="960" height="540"></canvas>
+
+  <div id="hud-touch">
+    <button class="tbtn t-left" data-btn="left" aria-label="left">&#9664;</button>
+    <button class="tbtn t-right" data-btn="right" aria-label="right">&#9654;</button>
+    <button class="tbtn t-jump" data-btn="jump" aria-label="jump">&#9650;</button>
+    <button class="tbtn big t-attack" data-btn="attack" aria-label="attack">&#9733;</button>
+    <button class="tbtn t-dash" data-btn="dash" aria-label="dash">&#187;</button>
+  </div>
+
+  <section id="screen-title" class="screen">
+    <div class="game-title" id="game-title-el">STICK<br>SHOWDOWN</div>
+    <p class="tagline" data-i18n="tagline"></p>
+    <button class="btn primary" id="btn-play" data-i18n="play"></button>
+    <button class="btn" id="btn-howto" data-i18n="howtoBtn"></button>
+    <button class="btn" id="btn-credits" data-i18n="creditsBtn"></button>
+    <div class="top-toggles">
+      <button class="btn small" id="btn-lang"></button>
+      <button class="btn small" id="btn-sound"></button>
+    </div>
+  </section>
+
+  <section id="screen-howto" class="screen hidden">
+    <h2 class="sub" data-i18n="howtoTitle"></h2>
+    <div class="howto-box">
+      <p class="goal" data-i18n="goalText"></p>
+      <div class="keys">
+        <span><kbd>A</kbd>/<kbd>D</kbd> <span data-i18n="ctlMove"></span></span>
+        <span><kbd>W</kbd>/<kbd>Space</kbd> <span data-i18n="ctlJump"></span></span>
+        <span><kbd>J</kbd>/<kbd>X</kbd> <span data-i18n="ctlAttack"></span></span>
+        <span><kbd>K</kbd>/<kbd>Shift</kbd> <span data-i18n="ctlDash"></span></span>
+        <span><kbd>Esc</kbd> <span data-i18n="paused"></span></span>
+      </div>
+      <p class="tip"><b>1.</b> <span data-i18n="tip1"></span></p>
+      <p class="tip"><b>2.</b> <span data-i18n="tip2"></span></p>
+      <p class="tip"><b>3.</b> <span data-i18n="tip3"></span></p>
+      <p class="tip" data-i18n="touchNote"></p>
+    </div>
+    <button class="btn" id="btn-back-howto" data-i18n="back"></button>
+  </section>
+
+  <section id="screen-credits" class="screen hidden">
+    <h2 class="sub" data-i18n="creditsTitle"></h2>
+    <div class="howto-box">
+      <p data-i18n="creditsBody"></p>
+      <p class="tip">github.com/codex-lm/stick-showdown · MIT</p>
+    </div>
+    <button class="btn" id="btn-back-credits" data-i18n="back"></button>
+  </section>
+
+  <section id="screen-levels" class="screen hidden">
+    <h2 class="sub" data-i18n="chooseLevel"></h2>
+    <div class="level-grid" id="level-cards"></div>
+    <div class="weapon-strip" id="weapon-strip"></div>
+    <div class="btn-row">
+      <button class="btn" id="btn-back-levels" data-i18n="back"></button>
+      <button class="btn primary" id="btn-start" data-i18n="start"></button>
+    </div>
+  </section>
+
+  <section id="screen-overlay" class="screen hidden">
+    <div class="panel" id="ov-panel"></div>
+  </section>
+
+  <div class="footer" data-i18n="footer"></div>
+</div>
+
+<script src="assets/config.js"></script>
+<script src="assets/i18n.js"></script>
+<script src="assets/engine.js"></script>
+<script src="assets/audio.js"></script>
+<script src="assets/render.js"></script>
+<script src="assets/ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "title": "Stick Showdown",
+  "description": "A high-noon stickman brawl on desert paper. Fight waves of bandits, scouts, slingers and brutes, then duel a bigger boss at the end of every level — from Cactus Jack to the burning El Sol. Five weapons unlock as you progress (fists, stick, machete, piercing spear, quaking sledge), every attack is telegraphed, and a perfectly timed dash empowers your next blow. Chain hits to raise your score multiplier, earn medals, and survive until high noon. Solo, touch-friendly, in English, French and Spanish.",
+  "entrypoint": "index.html",
+  "license": "MIT",
+  "controls": [
+    "A/D or arrow keys to move, W / Up / Space to jump — or the on-screen pad on touch screens.",
+    "J or X to attack (chain presses for weapon combos), K or Shift to dash: you are briefly invulnerable.",
+    "Esc to pause. A raised weapon with a red ! means an attack is coming: dodge or dash through it."
+  ],
+  "genre": [
+    "Arcade",
+    "Action"
+  ],
+  "themes": [
+    "Stickman",
+    "Western",
+    "Boss rush"
+  ],
+  "credits": [
+    "A game by Cédric Bernadac, created with AI agents (ZCode & Kimi K3.1 Pro)."
+  ],
+  "cover": "cover.png"
+}

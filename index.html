@@ -1,0 +1,3574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Stick Showdown</title>
+<style>
+/* Stick Showdown — desert-noon UI: sand paper, ink strokes, terracotta accent. */
+:root {
+  --sand: #e8d9b0;
+  --sand-light: #f2e6c8;
+  --paper: #f6efdb;
+  --ink: #2b2118;
+  --ink-soft: rgba(43, 33, 24, 0.55);
+  --terra: #b5502f;
+  --ochre: #c47f3d;
+  --dust: #c9b285;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--paper);
+  background-image:
+    radial-gradient(rgba(43, 33, 24, 0.05) 1px, transparent 1.4px);
+  background-size: 26px 26px;
+  font-family: 'Trebuchet MS', 'Segoe UI', Verdana, sans-serif;
+  color: var(--ink);
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+#stage {
+  position: relative;
+  width: min(100vw, calc(100vh * 16 / 9));
+  height: min(100vh, calc(100vw * 9 / 16));
+  margin: 0 auto;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+canvas#game {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: var(--sand);
+}
+
+/* ---------- screens ---------- */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 20px;
+  background: rgba(246, 239, 219, 0.9);
+  z-index: 10;
+  overflow-y: auto;
+}
+.screen.hidden { display: none; }
+
+.game-title {
+  font-family: Impact, 'Arial Black', 'Trebuchet MS', sans-serif;
+  font-size: clamp(34px, 8vw, 74px);
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  line-height: 0.95;
+  text-transform: uppercase;
+  text-align: center;
+  text-shadow: 4px 4px 0 var(--terra);
+  transform: rotate(-1.5deg);
+}
+.tagline {
+  font-size: clamp(13px, 2.2vw, 18px);
+  color: var(--ink-soft);
+  font-style: italic;
+  margin-top: -6px;
+}
+
+h2.sub {
+  font-family: Impact, 'Arial Black', sans-serif;
+  font-size: clamp(24px, 4.5vw, 40px);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  text-shadow: 3px 3px 0 var(--dust);
+}
+h2.win { color: var(--ink); text-shadow: 3px 3px 0 var(--ochre); }
+h2.lose { color: var(--terra); text-shadow: 3px 3px 0 var(--ink); }
+
+.btn {
+  font-family: inherit;
+  font-size: clamp(14px, 2.4vw, 19px);
+  font-weight: bold;
+  padding: 10px 26px;
+  min-width: 180px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 4px 4px 0 var(--ink);
+  cursor: pointer;
+  transition: transform 0.06s ease, box-shadow 0.06s ease;
+}
+.btn:hover:not(:disabled) { background: var(--sand-light); transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); }
+.btn:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.primary { background: var(--terra); color: var(--paper); }
+.btn-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 8px; }
+
+.btn.small { min-width: 0; padding: 7px 16px; font-size: 14px; }
+
+/* ---------- how to ---------- */
+.howto-box {
+  max-width: 640px;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 5px 5px 0 var(--ink);
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 15px;
+  line-height: 1.45;
+  text-align: left;
+}
+.howto-box .goal { font-weight: bold; }
+.howto-box .tip { color: var(--ink-soft); }
+.howto-box .tip b { color: var(--terra); }
+.keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 4px 0;
+}
+.keys span { white-space: nowrap; }
+kbd {
+  font-family: inherit;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-size: 13px;
+  box-shadow: 2px 2px 0 var(--ink-soft);
+}
+
+/* ---------- level select ---------- */
+#screen-levels { justify-content: flex-start; padding-top: 26px; }
+.level-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  max-width: 900px;
+}
+.level-card {
+  font-family: inherit;
+  width: 158px;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 var(--ink);
+  padding: 8px 10px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: transform 0.07s ease;
+}
+.level-card:hover:not(.locked) { transform: translate(-1px, -2px); }
+.level-card.sel { border-color: var(--terra); box-shadow: 4px 4px 0 var(--terra); }
+.level-card.locked { opacity: 0.55; cursor: default; filter: saturate(0.4); }
+.lc-head { display: flex; align-items: baseline; gap: 7px; align-self: stretch; }
+.lc-num {
+  font-family: Impact, sans-serif;
+  font-size: 26px;
+  color: var(--terra);
+}
+.lc-name { font-weight: bold; font-size: 13.5px; line-height: 1.1; }
+.lc-boss { margin: 2px 0; }
+.lc-info { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: var(--ink-soft); text-align: center; }
+.lc-best { color: var(--ochre); font-weight: bold; }
+.lc-medals { display: flex; gap: 4px; justify-content: center; }
+.dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--ink); display: inline-block; background: transparent; }
+.dot.m1.on { background: #a4703f; }
+.dot.m2.on { background: #b9b9b9; }
+.dot.m3.on { background: var(--ochre); }
+
+.weapon-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: 900px;
+}
+.weapon-btn {
+  font-family: inherit;
+  width: 128px;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 4px 6px 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  transition: transform 0.07s ease;
+}
+.weapon-btn:hover:not(.locked) { transform: translateY(-2px); }
+.weapon-btn.sel { border-color: var(--terra); box-shadow: 3px 3px 0 var(--terra); }
+.weapon-btn.locked { opacity: 0.5; cursor: default; filter: grayscale(0.8); }
+.wb-name { font-weight: bold; font-size: 13px; }
+.wb-desc { font-size: 10px; color: var(--ink-soft); text-align: center; line-height: 1.15; min-height: 23px; }
+
+/* ---------- overlay ---------- */
+#screen-overlay { background: rgba(43, 33, 24, 0.45); }
+#screen-overlay .panel {
+  background: var(--paper);
+  border: 4px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 6px 6px 0 var(--ink);
+  padding: 22px 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 92%;
+}
+.stats { display: flex; flex-direction: column; gap: 4px; min-width: 240px; }
+.srow { display: flex; justify-content: space-between; gap: 30px; font-size: 15px; }
+.srow span:last-child { font-weight: bold; }
+.newbest { color: var(--terra); font-weight: bold; }
+.medal-line { font-weight: bold; color: var(--ochre); }
+.unlock-line { font-weight: bold; color: var(--terra); }
+.hint { max-width: 400px; text-align: center; color: var(--ink-soft); font-style: italic; }
+
+/* panel wrapper for overlay content */
+#screen-overlay h2, #screen-overlay .stats, #screen-overlay .btn-row,
+#screen-overlay .newbest, #screen-overlay .medal-line, #screen-overlay .unlock-line,
+#screen-overlay .hint {
+  /* used inside .panel injected by ui.js */
+}
+
+/* ---------- touch controls ---------- */
+#hud-touch { position: absolute; inset: 0; display: none; z-index: 5; pointer-events: none; }
+#hud-touch.visible { display: block; }
+#hud-touch .tbtn {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+  background: rgba(246, 239, 219, 0.55);
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: bold;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  touch-action: none;
+}
+#hud-touch .tbtn.active { background: var(--terra); color: var(--paper); }
+#hud-touch .tbtn.big { width: 76px; height: 76px; background: rgba(181, 80, 47, 0.75); color: var(--paper); border-color: var(--ink); }
+.t-left  { left: 18px;  bottom: 22px; }
+.t-right { left: 96px;  bottom: 22px; }
+.t-jump  { right: 108px; bottom: 96px; }
+.t-attack{ right: 24px; bottom: 40px; }
+.t-dash  { right: 116px; bottom: 22px; }
+
+/* ---------- footer ---------- */
+.footer {
+  position: absolute;
+  bottom: 8px;
+  left: 0; right: 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--ink-soft);
+  z-index: 11;
+  pointer-events: none;
+}
+body.playing .footer { display: none; }
+
+/* top bar on menus */
+.top-toggles { display: flex; gap: 10px; }
+
+@media (max-height: 480px) {
+  .game-title { text-shadow: 3px 3px 0 var(--terra); }
+  .btn { padding: 7px 18px; }
+}
+
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="960" height="540"></canvas>
+
+  <div id="hud-touch">
+    <button class="tbtn t-left" data-btn="left" aria-label="left">&#9664;</button>
+    <button class="tbtn t-right" data-btn="right" aria-label="right">&#9654;</button>
+    <button class="tbtn t-jump" data-btn="jump" aria-label="jump">&#9650;</button>
+    <button class="tbtn big t-attack" data-btn="attack" aria-label="attack">&#9733;</button>
+    <button class="tbtn t-dash" data-btn="dash" aria-label="dash">&#187;</button>
+  </div>
+
+  <section id="screen-title" class="screen">
+    <div class="game-title" id="game-title-el">STICK<br>SHOWDOWN</div>
+    <p class="tagline" data-i18n="tagline"></p>
+    <button class="btn primary" id="btn-play" data-i18n="play"></button>
+    <button class="btn" id="btn-howto" data-i18n="howtoBtn"></button>
+    <button class="btn" id="btn-credits" data-i18n="creditsBtn"></button>
+    <div class="top-toggles">
+      <button class="btn small" id="btn-lang"></button>
+      <button class="btn small" id="btn-sound"></button>
+    </div>
+  </section>
+
+  <section id="screen-howto" class="screen hidden">
+    <h2 class="sub" data-i18n="howtoTitle"></h2>
+    <div class="howto-box">
+      <p class="goal" data-i18n="goalText"></p>
+      <div class="keys">
+        <span><kbd>A</kbd>/<kbd>D</kbd> <span data-i18n="ctlMove"></span></span>
+        <span><kbd>W</kbd>/<kbd>Space</kbd> <span data-i18n="ctlJump"></span></span>
+        <span><kbd>J</kbd>/<kbd>X</kbd> <span data-i18n="ctlAttack"></span></span>
+        <span><kbd>K</kbd>/<kbd>Shift</kbd> <span data-i18n="ctlDash"></span></span>
+        <span><kbd>Esc</kbd> <span data-i18n="paused"></span></span>
+      </div>
+      <p class="tip"><b>1.</b> <span data-i18n="tip1"></span></p>
+      <p class="tip"><b>2.</b> <span data-i18n="tip2"></span></p>
+      <p class="tip"><b>3.</b> <span data-i18n="tip3"></span></p>
+      <p class="tip" data-i18n="touchNote"></p>
+    </div>
+    <button class="btn" id="btn-back-howto" data-i18n="back"></button>
+  </section>
+
+  <section id="screen-credits" class="screen hidden">
+    <h2 class="sub" data-i18n="creditsTitle"></h2>
+    <div class="howto-box">
+      <p data-i18n="creditsBody"></p>
+      <p class="tip">github.com/codex-lm/stick-showdown · MIT</p>
+    </div>
+    <button class="btn" id="btn-back-credits" data-i18n="back"></button>
+  </section>
+
+  <section id="screen-levels" class="screen hidden">
+    <h2 class="sub" data-i18n="chooseLevel"></h2>
+    <div class="level-grid" id="level-cards"></div>
+    <div class="weapon-strip" id="weapon-strip"></div>
+    <div class="btn-row">
+      <button class="btn" id="btn-back-levels" data-i18n="back"></button>
+      <button class="btn primary" id="btn-start" data-i18n="start"></button>
+    </div>
+  </section>
+
+  <section id="screen-overlay" class="screen hidden">
+    <div class="panel" id="ov-panel"></div>
+  </section>
+
+  <div class="footer" data-i18n="footer"></div>
+</div>
+
+<script>
+/* Stick Showdown — game data: weapons, enemies, levels, bosses, scoring.
+   Pure data + tiny helpers. No DOM access. Loaded before engine.js. */
+(function () {
+  'use strict';
+
+  var ARENA = {
+    W: 960, H: 540,
+    floorY: 476,          // ground line (feet y)
+    wallL: 34, wallR: 926 // playable x bounds for fighters
+  };
+
+  var PHYS = {
+    gravity: 2200,
+    playerSpeed: 250,
+    jumpV: -760,
+    dashSpeed: 430,
+    dashTime: 0.16,
+    dashIframes: 0.24,
+    dashCd: 0.9,
+    maxAirDashes: 1
+  };
+
+  // Combo steps: d = damage, kb = knockback impulse (px/s), heavy = big feedback.
+  // w/a/r = windup/active/recover seconds. arcH = vertical size of hitbox.
+  var WEAPONS = [
+    {
+      id: 0, key: 'fists', reach: 46, arcH: 46, pierce: false, splash: 0,
+      steps: [
+        { d: 7,  kb: 130, w: 0.06, a: 0.08, r: 0.10, heavy: false },
+        { d: 7,  kb: 130, w: 0.06, a: 0.08, r: 0.10, heavy: false },
+        { d: 10, kb: 280, w: 0.08, a: 0.08, r: 0.14, heavy: true }
+      ]
+    },
+    {
+      id: 1, key: 'stick', reach: 80, arcH: 40, pierce: false, splash: 0,
+      steps: [
+        { d: 10, kb: 150, w: 0.08, a: 0.08, r: 0.13, heavy: false },
+        { d: 13, kb: 260, w: 0.09, a: 0.08, r: 0.16, heavy: true }
+      ]
+    },
+    {
+      id: 2, key: 'machete', reach: 64, arcH: 76, pierce: false, splash: 0,
+      steps: [
+        { d: 13, kb: 190, w: 0.10, a: 0.08, r: 0.17, heavy: false },
+        { d: 17, kb: 320, w: 0.12, a: 0.08, r: 0.21, heavy: true }
+      ]
+    },
+    {
+      id: 3, key: 'spear', reach: 108, arcH: 26, pierce: true, splash: 0,
+      steps: [
+        { d: 12, kb: 95,  w: 0.09, a: 0.07, r: 0.14, heavy: false },
+        { d: 12, kb: 95,  w: 0.08, a: 0.07, r: 0.14, heavy: false },
+        { d: 16, kb: 210, w: 0.11, a: 0.07, r: 0.18, heavy: true }
+      ]
+    },
+    {
+      id: 4, key: 'sledge', reach: 58, arcH: 62, pierce: false, splash: 52,
+      steps: [
+        { d: 24, kb: 430, w: 0.22, a: 0.08, r: 0.30, heavy: true }
+      ],
+      quakeDmg: 8
+    }
+  ];
+
+  // Weapon 0 (fists) always available; clearing level n unlocks weapon n
+  // (stick=1 after L1, machete=2 after L2, spear=3 after L3, sledge=4 after L4).
+  function weaponUnlockedByLevel(levelCleared) { return levelCleared; }
+
+  var ENEMIES = {
+    // Base HP tuned (Kimi review 31/10) so scaled values land on clean
+    // hit-count thresholds instead of "1 HP over a full combo" spikes.
+    bandit: { key: 'bandit', hp: 24, dmg: 8,  speed: 62,  reach: 44, windup: 0.42, active: 0.10, recover: 0.34, cd: 1.15, kbMul: 1,   score: 50,  scale: 1 },
+    scout:  { key: 'scout',  hp: 18, dmg: 6,  speed: 132, reach: 40, windup: 0.24, active: 0.08, recover: 0.30, cd: 1.5,  kbMul: 1.4,  score: 70,  scale: 0.92 },
+    slinger:{ key: 'slinger',hp: 20, dmg: 7,  speed: 78,  reach: 0,  windup: 0.5,  active: 0,    recover: 0.4,  cd: 2.2,  kbMul: 1,   score: 80,  scale: 0.96 },
+    brute:  { key: 'brute',  hp: 58, dmg: 16, speed: 40,  reach: 54, windup: 0.7,  active: 0.12, recover: 0.5,  cd: 1.9,  kbMul: 0.25, score: 120, scale: 1.28 }
+  };
+
+  // Bosses: bigger scale each level, enrage below 50% hp (cooldowns x0.85).
+  var BOSSES = [
+    { key: 'cactus',  level: 1, hp: 380, scale: 2.1,  speed: 66,  score: 550,  dmg: 14 },
+    { key: 'sidewinder', level: 2, hp: 560, scale: 1.8, speed: 200, score: 700,  dmg: 15 },
+    { key: 'vulture', level: 3, hp: 600, scale: 2.1,  speed: 120, score: 850,  dmg: 14 },
+    { key: 'titan',   level: 4, hp: 820, scale: 3.2,  speed: 30,  score: 1000, dmg: 18 },
+    { key: 'elsol',   level: 5, hp: 950, scale: 2.5,  speed: 150, score: 1150, dmg: 16 }
+  ];
+
+  function enemyScaled(typeKey, level) {
+    var base = ENEMIES[typeKey];
+    return {
+      key: base.key, hp: Math.round(base.hp * (1 + 0.15 * (level - 1))),
+      dmg: Math.round(base.dmg * (1 + 0.10 * (level - 1))),
+      speed: base.speed * (1 + 0.04 * (level - 1)),
+      reach: base.reach, windup: base.windup, active: base.active,
+      recover: base.recover, cd: base.cd, kbMul: base.kbMul,
+      score: base.score, scale: base.scale
+    };
+  }
+
+  // Waves per level. 'L'/'R' = spawn side. Trickle: next spawns when alive < cap.
+  var LEVELS = [
+    { level: 1, waves: [ ['bandit:R', 'bandit:L'], ['bandit:R', 'bandit:L', 'scout:R'] ], boss: 0, par: 45 },
+    { level: 2, waves: [ ['bandit:R', 'bandit:L', 'scout:R'], ['scout:L', 'scout:R', 'slinger:L'], ['bandit:R', 'bandit:L', 'slinger:R'] ], boss: 1, par: 70 },
+    { level: 3, waves: [ ['scout:R', 'scout:L', 'slinger:R'], ['brute:R', 'bandit:L', 'bandit:R'], ['slinger:L', 'slinger:R', 'scout:L', 'bandit:R'] ], boss: 2, par: 90 },
+    { level: 4, waves: [ ['brute:L', 'scout:R', 'scout:L'], ['brute:R', 'slinger:L', 'slinger:R'], ['bandit:R', 'bandit:L', 'brute:R', 'slinger:L'] ], boss: 3, par: 110 },
+    { level: 5, waves: [ ['brute:R', 'brute:L', 'slinger:R'], ['scout:L', 'scout:R', 'scout:L', 'slinger:L', 'slinger:R'], ['brute:L', 'slinger:R', 'slinger:L', 'scout:R', 'scout:R'] ], boss: 4, par: 140 }
+  ];
+
+  // Reference scores (waves + boss, ~x1.5 average multiplier + ideal bonuses).
+  // Medals: gold ~0.82, silver ~0.62, bronze ~0.42 of the perfect-ish run.
+  var MEDALS = [
+    { gold: 2600, silver: 1950, bronze: 1300 },
+    { gold: 4200, silver: 3150, bronze: 2100 },
+    { gold: 6000, silver: 4500, bronze: 3000 },
+    { gold: 8200, silver: 6150, bronze: 4100 },
+    { gold: 10800, silver: 8100, bronze: 5400 }
+  ];
+
+  var SCORE = {
+    noHitBonus: 300,
+    timeBonus: 150,
+    healAmount: 10,
+    healDropChance: 0.2,
+    comboWindow: 2.5,
+    comboStep: 6,      // +1 multiplier every N hits
+    comboMaxMult: 4
+  };
+
+  function comboMult(combo) {
+    var m = 1 + Math.floor(combo / SCORE.comboStep);
+    return Math.min(m, SCORE.comboMaxMult);
+  }
+
+  function medalFor(level, score) {
+    var t = MEDALS[level - 1];
+    if (!t) return 0;
+    if (score >= t.gold) return 3;
+    if (score >= t.silver) return 2;
+    if (score >= t.bronze) return 1;
+    return 0;
+  }
+
+  // Deterministic RNG (mulberry32) — injectable for tests.
+  function makeRng(seed) {
+    var s = seed >>> 0;
+    return function () {
+      s = (s + 0x6D2B79F5) >>> 0;
+      var t = s;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  globalThis.SS_Config = {
+    ARENA: ARENA, PHYS: PHYS, WEAPONS: WEAPONS, ENEMIES: ENEMIES,
+    BOSSES: BOSSES, LEVELS: LEVELS, MEDALS: MEDALS, SCORE: SCORE,
+    enemyScaled: enemyScaled, weaponUnlockedByLevel: weaponUnlockedByLevel,
+    comboMult: comboMult, medalFor: medalFor, makeRng: makeRng
+  };
+})();
+
+</script>
+<script>
+/* Stick Showdown — trilingual UI strings. EN default, FR and ES complete. */
+(function () {
+  'use strict';
+
+  var EN = {
+    langName: 'English',
+    title: 'STICK SHOWDOWN',
+    tagline: 'A high-noon stickman brawl',
+    play: 'Play',
+    howtoBtn: 'How to play',
+    creditsBtn: 'Credits',
+    language: 'Language',
+    sound: 'Sound',
+    on: 'on',
+    off: 'off',
+    back: 'Back',
+    menu: 'Menu',
+    resume: 'Resume',
+    restart: 'Restart',
+    paused: 'Paused',
+    chooseLevel: 'Choose your duel',
+    level: 'Level',
+    waves: 'waves',
+    boss: 'Boss',
+    best: 'Best',
+    locked: 'Locked',
+    medal0: '', medal1: 'Bronze', medal2: 'Silver', medal3: 'Gold',
+    weapon: 'Weapon',
+    equip: 'Equip',
+    equipped: 'Equipped',
+    start: 'Fight!',
+    unlockBy: 'Clear level {n} to unlock',
+    waveBanner: 'Wave {n} of {m}',
+    bossIncoming: 'BOSS INCOMING',
+    bossDefeated: 'BOSS DEFEATED',
+    enrage: '{name} is enraged!',
+    vs: 'vs',
+    victory: 'VICTORY',
+    defeat: 'DEFEAT',
+    defeatHint: 'Watch the wind-up, dash through the blow, punish the recovery.',
+    time: 'Time',
+    kills: 'Kills',
+    maxCombo: 'Max combo',
+    noHit: 'Untouched',
+    timeBonus: 'Speed bonus',
+    total: 'Score',
+    newBest: 'New best!',
+    medalEarned: '{m} medal',
+    weaponUnlocked: 'New weapon: {w}!',
+    nextLevel: 'Next level',
+    replay: 'Replay',
+    retry: 'Retry',
+    howtoTitle: 'How to play',
+    ctlMove: 'Move',
+    ctlJump: 'Jump',
+    ctlAttack: 'Attack',
+    ctlDash: 'Dash — brief invulnerability',
+    keysHint: 'Keyboard: A/D or arrows to move · W / Up / Space to jump · J or X to attack · K or Shift to dash · Esc to pause',
+    touchNote: 'On touch screens, use the on-screen buttons.',
+    goalText: 'Clear every wave, then beat the boss. Landing hits builds your score multiplier — taking a hit resets it.',
+    tip1: 'A raised weapon means move: every enemy attack is telegraphed.',
+    tip2: 'Dash through attacks — you cannot be hurt while dashing.',
+    tip3: 'Clearing a level unlocks a new weapon. Pick any unlocked weapon before each fight.',
+    creditsTitle: 'Credits',
+    creditsBody: 'A game by Cédric Bernadac, created with AI agents (Z Code & Kimi K3.1 Pro). Music-free; all sounds are synthesized in your browser.',
+    footer: 'A game by Cédric Bernadac — created with AI agents (ZCode & Kimi K3.1 Pro)',
+    wFists: 'Fists',
+    wStick: 'Stick',
+    wMachete: 'Machete',
+    wSpear: 'Spear',
+    wSledge: 'Sledge',
+    wFistsD: 'Fast and always with you.',
+    wStickD: 'Long pokes, safe spacing.',
+    wMacheteD: 'Wide slashes, heavy damage.',
+    wSpearD: 'Pierces every foe in a line.',
+    wSledgeD: 'Slow, devastating, shakes the ground.',
+    eBandit: 'Bandit',
+    eScout: 'Scout',
+    eSlinger: 'Slinger',
+    eBrute: 'Brute',
+    l1: 'Dusty Welcome',
+    l2: 'Rattler Pass',
+    l3: 'Bone Dry Gulch',
+    l4: 'The Standing Stones',
+    l5: 'High Noon',
+    bCactus: 'Cactus Jack',
+    bCactusE: 'the Clubhand',
+    bSidewinder: 'Sidewinder',
+    bSidewinderE: 'the Blur',
+    bVulture: 'The Vulture',
+    bVultureE: 'the Winged Menace',
+    bTitan: 'Dust Titan',
+    bTitanE: 'the Mountain that Walks',
+    bElsol: 'El Sol',
+    bElsolE: 'the Last Light'
+  };
+
+  var FR = {
+    langName: 'Français',
+    title: 'STICK SHOWDOWN',
+    tagline: 'Un duel de bâtons en plein soleil',
+    play: 'Jouer',
+    howtoBtn: 'Comment jouer',
+    creditsBtn: 'Crédits',
+    language: 'Langue',
+    sound: 'Son',
+    on: 'activé',
+    off: 'coupé',
+    back: 'Retour',
+    menu: 'Menu',
+    resume: 'Reprendre',
+    restart: 'Recommencer',
+    paused: 'Pause',
+    chooseLevel: 'Choisissez votre duel',
+    level: 'Niveau',
+    waves: 'vagues',
+    boss: 'Boss',
+    best: 'Record',
+    locked: 'Verrouillé',
+    medal0: '', medal1: 'Bronze', medal2: 'Argent', medal3: 'Or',
+    weapon: 'Arme',
+    equip: 'Équiper',
+    equipped: 'Équipée',
+    start: 'Combattre !',
+    unlockBy: 'Terminez le niveau {n} pour débloquer',
+    waveBanner: 'Vague {n} sur {m}',
+    bossIncoming: 'BOSS EN VUE',
+    bossDefeated: 'BOSS VAINCU',
+    enrage: '{name} est enragé !',
+    vs: 'contre',
+    victory: 'VICTOIRE',
+    defeat: 'DÉFAITE',
+    defeatHint: 'Repérez le télégraphe, esquivez au dash, punissez la récupération.',
+    time: 'Temps',
+    kills: 'Éliminations',
+    maxCombo: 'Combo max',
+    noHit: 'Sans une égratignure',
+    timeBonus: 'Bonus de vitesse',
+    total: 'Score',
+    newBest: 'Nouveau record !',
+    medalEarned: 'Médaille de {m}',
+    weaponUnlocked: 'Nouvelle arme : {w} !',
+    nextLevel: 'Niveau suivant',
+    replay: 'Rejouer',
+    retry: 'Réessayer',
+    howtoTitle: 'Comment jouer',
+    ctlMove: 'Se déplacer',
+    ctlJump: 'Sauter',
+    ctlAttack: 'Attaquer',
+    ctlDash: 'Esquive — brève invulnérabilité',
+    keysHint: 'Clavier : A/D ou flèches pour bouger · W / Haut / Espace pour sauter · J ou X pour attaquer · K ou Maj pour esquiver · Échap pour la pause',
+    touchNote: 'Sur écran tactile, utilisez les boutons à l\u2019écran.',
+    goalText: 'Nettoyez chaque vague, puis battez le boss. Chaque coup porté augmente le multiplicateur de score — un coup reçu le remet à zéro.',
+    tip1: 'Une arme qui se lève annonce l\u2019attaque : tous les coups sont télégraphiés.',
+    tip2: 'Passez au travers avec l\u2019esquive : vous êtes invulnérable pendant le dash.',
+    tip3: 'Terminer un niveau débloque une nouvelle arme. Choisissez librement avant chaque combat.',
+    creditsTitle: 'Crédits',
+    creditsBody: 'Un jeu de Cédric Bernadac, créé avec des agents IA (Z Code & Kimi K3.1 Pro). Sans musique ; tous les sons sont synthétisés dans votre navigateur.',
+    footer: 'Un jeu de Cédric Bernadac — créé avec des agents IA (ZCode & Kimi K3.1 Pro)',
+    wFists: 'Poings',
+    wStick: 'Bâton',
+    wMachete: 'Machette',
+    wSpear: 'Lance',
+    wSledge: 'Masse',
+    wFistsD: 'Rapides et toujours là.',
+    wStickD: 'Longues touches, distance sûre.',
+    wMacheteD: 'Grandes tailles, gros dégâts.',
+    wSpearD: 'Transperce tous les ennemis alignés.',
+    wSledgeD: 'Lente, dévastatrice, fait trembler le sol.',
+    eBandit: 'Bandit',
+    eScout: 'Éclaireur',
+    eSlinger: 'Frondeur',
+    eBrute: 'Brute',
+    l1: 'Bienvenue dans la poussière',
+    l2: 'Le Col du crotale',
+    l3: 'Le Ravin sec',
+    l4: 'Les Pierres levées',
+    l5: 'Midi pile',
+    bCactus: 'Cactus Jack',
+    bCactusE: 'la Massue',
+    bSidewinder: 'Sidewinder',
+    bSidewinderE: 'l\u2019Éclair',
+    bVulture: 'Le Vautour',
+    bVultureE: 'le Fléau ailé',
+    bTitan: 'Titan de Poussière',
+    bTitanE: 'la Montagne qui marche',
+    bElsol: 'El Sol',
+    bElsolE: 'la Dernière Lueur'
+  };
+
+  var ES = {
+    langName: 'Español',
+    title: 'STICK SHOWDOWN',
+    tagline: 'Un duelo de palitos al sol del mediodía',
+    play: 'Jugar',
+    howtoBtn: 'Cómo jugar',
+    creditsBtn: 'Créditos',
+    language: 'Idioma',
+    sound: 'Sonido',
+    on: 'sí',
+    off: 'no',
+    back: 'Volver',
+    menu: 'Menú',
+    resume: 'Continuar',
+    restart: 'Reiniciar',
+    paused: 'Pausa',
+    chooseLevel: 'Elige tu duelo',
+    level: 'Nivel',
+    waves: 'oleadas',
+    boss: 'Jefe',
+    best: 'Récord',
+    locked: 'Bloqueado',
+    medal0: '', medal1: 'Bronce', medal2: 'Plata', medal3: 'Oro',
+    weapon: 'Arma',
+    equip: 'Equipar',
+    equipped: 'Equipada',
+    start: '¡Luchar!',
+    unlockBy: 'Supera el nivel {n} para desbloquear',
+    waveBanner: 'Oleada {n} de {m}',
+    bossIncoming: 'JEFE ENEMIGO',
+    bossDefeated: 'JEFE DERROTADO',
+    enrage: '¡{name} se ha enfurecido!',
+    vs: 'contra',
+    victory: 'VICTORIA',
+    defeat: 'DERROTA',
+    defeatHint: 'Observa el aviso, esquiva con la dash y castiga la recuperación.',
+    time: 'Tiempo',
+    kills: 'Bajas',
+    maxCombo: 'Combo máx.',
+    noHit: 'Sin un rasguño',
+    timeBonus: 'Bono de velocidad',
+    total: 'Puntos',
+    newBest: '¡Nuevo récord!',
+    medalEarned: 'Medalla de {m}',
+    weaponUnlocked: 'Nueva arma: ¡{w}!',
+    nextLevel: 'Nivel siguiente',
+    replay: 'Repetir',
+    retry: 'Reintentar',
+    howtoTitle: 'Cómo jugar',
+    ctlMove: 'Moverse',
+    ctlJump: 'Saltar',
+    ctlAttack: 'Atacar',
+    ctlDash: 'Esquiva — breve invulnerabilidad',
+    keysHint: 'Teclado: A/D o flechas para moverse · W / Arriba / Espacio para saltar · J o X para atacar · K o Shift para esquivar · Esc para pausa',
+    touchNote: 'En pantallas táctiles, usa los botones en pantalla.',
+    goalText: 'Limpia cada oleada y vence al jefe. Cada golpe aumenta tu multiplicador de puntuación — recibir un golpe lo reinicia.',
+    tip1: 'Un arma levantada anuncia el golpe: todos los ataques se avisan.',
+    tip2: 'Atraviesa los ataques con la esquiva: eres invulnerable durante el dash.',
+    tip3: 'Superar un nivel desbloquea un arma nueva. Elige cualquiera antes de cada combate.',
+    creditsTitle: 'Créditos',
+    creditsBody: 'Un juego de Cédric Bernadac, creado con agentes de IA (Z Code & Kimi K3.1 Pro). Sin música; todos los sonidos se sintetizan en tu navegador.',
+    footer: 'Un juego de Cédric Bernadac — creado con agentes de IA (ZCode & Kimi K3.1 Pro)',
+    wFists: 'Puños',
+    wStick: 'Bastón',
+    wMachete: 'Machete',
+    wSpear: 'Lanza',
+    wSledge: 'Maza',
+    wFistsD: 'Rápidos y siempre contigo.',
+    wStickD: 'Toques largos, distancia segura.',
+    wMacheteD: 'Tajos anchos, mucho daño.',
+    wSpearD: 'Atraviesa a los enemigos en línea.',
+    wSledgeD: 'Lenta, devastadora, sacude el suelo.',
+    eBandit: 'Bandido',
+    eScout: 'Explorador',
+    eSlinger: 'Hondero',
+    eBrute: 'Bruto',
+    l1: 'Bienvenida al polvo',
+    l2: 'El paso de la cascabel',
+    l3: 'El barranco seco',
+    l4: 'Las piedras altas',
+    l5: 'Mediodía exacto',
+    bCactus: 'Cactus Jack',
+    bCactusE: 'el Garrote',
+    bSidewinder: 'Sidewinder',
+    bSidewinderE: 'el Relámpago',
+    bVulture: 'El Buitre',
+    bVultureE: 'la Plaga Alada',
+    bTitan: 'Titán de Polvo',
+    bTitanE: 'la Montaña que Camina',
+    bElsol: 'El Sol',
+    bElsolE: 'la Última Luz'
+  };
+
+  var DICTS = { en: EN, fr: FR, es: ES };
+  var current = 'en';
+
+  function setLang(code) {
+    if (DICTS[code]) current = code;
+    return current;
+  }
+  function getLang() { return current; }
+  function t(key) {
+    var d = DICTS[current] || EN;
+    if (Object.prototype.hasOwnProperty.call(d, key)) return d[key];
+    if (Object.prototype.hasOwnProperty.call(EN, key)) return EN[key];
+    return key;
+  }
+  function fmt(key, params) {
+    var s = t(key);
+    if (params) Object.keys(params).forEach(function (k) {
+      s = s.split('{' + k + '}').join(String(params[k]));
+    });
+    return s;
+  }
+  function weaponName(id) {
+    var map = ['wFists', 'wStick', 'wMachete', 'wSpear', 'wSledge'];
+    return t(map[id] || 'wFists');
+  }
+  function bossName(i) {
+    var map = ['bCactus', 'bSidewinder', 'bVulture', 'bTitan', 'bElsol'];
+    return t(map[i] || 'bCactus');
+  }
+  function bossEpithet(i) {
+    var map = ['bCactusE', 'bSidewinderE', 'bVultureE', 'bTitanE', 'bElsolE'];
+    return t(map[i] || 'bCactusE');
+  }
+  function levelName(l) { return t('l' + l); }
+  function enemyName(key) {
+    var map = { bandit: 'eBandit', scout: 'eScout', slinger: 'eSlinger', brute: 'eBrute' };
+    return t(map[key] || key);
+  }
+
+  globalThis.SS_I18N = {
+    DICTS: DICTS, setLang: setLang, getLang: getLang, t: t, fmt: fmt,
+    weaponName: weaponName, bossName: bossName, bossEpithet: bossEpithet,
+    levelName: levelName, enemyName: enemyName
+  };
+})();
+
+</script>
+<script>
+/* Stick Showdown — engine: physics, combat, enemy & boss AI, waves, scoring.
+   Pure logic over a state object G; no DOM. Audio/particles are requested
+   through G.events and drained by the UI/renderer each frame. */
+(function () {
+  'use strict';
+
+  var C = globalThis.SS_Config;
+  var AR = C.ARENA, PH = C.PHYS, SC = C.SCORE;
+
+  // ---------- geometry helpers (exposed for tests) ----------
+  function bodyBox(f) {
+    var w = 26 * f.scale, h = 86 * f.scale;
+    return { x: f.x - w / 2, y: f.y - h, w: w, h: h };
+  }
+  function meleeBox(f, reach, arcH) {
+    var x0 = f.x + f.face * 8;
+    var chest = f.y - 86 * f.scale * 0.62;
+    var half = (arcH * f.scale) / 2;
+    return {
+      x: Math.min(x0, x0 + f.face * reach * f.scale),
+      y: chest - half,
+      w: reach * f.scale,
+      h: half * 2
+    };
+  }
+  function overlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+  function rectsOverlapScale(a, b) { return overlap(a, b); }
+
+  // ---------- factories ----------
+  function mkPlayer(weaponId) {
+    return {
+      kind: 'player', x: 180, y: AR.floorY, vx: 0, vy: 0, face: 1,
+      hp: 100, maxHp: 100, scale: 1, w: 26, h: 86,
+      state: 'idle', stateT: 0, onGround: true, dead: false,
+      weapon: C.WEAPONS[weaponId] || C.WEAPONS[0],
+      attack: null, attackBuf: 0, comboWindowT: 0,
+      dashT: 0, dashCd: 0, airDashes: 1, iframes: 0, hitFlash: 0,
+      powerCd: 0, powerHitT: 0,
+      kbResist: 1, runPhase: 0
+    };
+  }
+  function mkEnemy(typeKey, level, x, face) {
+    var s = C.enemyScaled(typeKey, level);
+    return {
+      kind: 'enemy', type: s.key, x: x, y: AR.floorY, vx: 0, vy: 0, face: face,
+      hp: s.hp, maxHp: s.hp, dmg: s.dmg, speed: s.speed, reach: s.reach,
+      windup: s.windup, active: s.active, recover: s.recover, atkCd: s.cd,
+      kbMul: s.kbMul, score: s.score, scale: s.scale,
+      state: 'spawn', stateT: 0, cd: 0.4, onGround: true, dead: false,
+      attack: null, iframes: 0, hitFlash: 0, retreatT: 0, runPhase: 0
+    };
+  }
+  function mkBoss(idx, level) {
+    var s = C.BOSSES[idx];
+    return {
+      kind: 'boss', bossIdx: idx, key: s.key, x: 720, y: AR.floorY, vx: 0, vy: 0, face: -1,
+      hp: s.hp, maxHp: s.hp, dmg: s.dmg, speed: s.speed, score: s.score, scale: s.scale,
+      state: 'enter', stateT: 0, onGround: true, dead: false,
+      attack: null, iframes: 0, hitFlash: 0, enraged: false,
+      patCd: 2.0, leapCd: 6, swoopCd: 6, rainCd: 8, zoneCd: 8, volleyCd: 3.2,
+      hoverY: 300, hoverDir: -1, hitOncePer: null, mercyMark: 0, runPhase: 0
+    };
+  }
+
+  function newGame(level, weaponId, rng) {
+    var cfg = C.LEVELS[level - 1];
+    var g = {
+      t: 0, level: level, weaponId: weaponId,
+      rng: rng || C.makeRng((Date.now() ^ (level * 2654435761)) >>> 0),
+      phase: 'waves', phaseT: 0,
+      waveIdx: -1, waveTotal: cfg.waves.length,
+      spawnQueue: [], spawnGapT: 0,
+      enemies: [], boss: null, projectiles: [], drops: [], zones: [],
+      particles: [], floaters: [], events: [],
+      player: mkPlayer(weaponId),
+      score: 0, kills: 0, combo: 0, comboT: 0, maxCombo: 0,
+      elapsed: 0, hurtCount: 0, banner: null, bannerT: 0,
+      hitstop: 0, shake: 0, result: null
+    };
+    nextWave(g);
+    return g;
+  }
+
+  // ---------- events ----------
+  function sfx(g, name, vol) { g.events.push({ type: 'sfx', name: name, vol: vol }); }
+  function fx(g, kind, x, y, opts) {
+    var e = { type: 'fx', kind: kind, x: x, y: y };
+    if (opts) for (var k in opts) e[k] = opts[k];
+    g.events.push(e);
+  }
+  function float(g, x, y, txt, col) { g.floaters.push({ x: x, y: y, txt: txt, t: 0, col: col || 'ink' }); }
+  function banner(g, kind, val) { g.banner = { kind: kind, val: val }; g.bannerT = 1.6; }
+
+  // ---------- waves ----------
+  function aliveCount(g) { return g.enemies.filter(function (e) { return !e.dead; }).length; }
+  function nextWave(g) {
+    var cfg = C.LEVELS[g.level - 1];
+    g.waveIdx++;
+    if (g.waveIdx >= cfg.waves.length) {
+      g.phase = 'bossIntro'; g.phaseT = 0;
+      banner(g, 'bossIncoming');
+      sfx(g, 'roar');
+      return;
+    }
+    g.spawnQueue = cfg.waves[g.waveIdx].slice();
+    banner(g, 'wave', { n: g.waveIdx + 1, m: cfg.waves.length });
+    g.spawnGapT = 0;
+  }
+  function spawnCap(g) { return 3 + (g.level >= 3 ? 1 : 0); }
+  function trySpawn(g, dt) {
+    if (!g.spawnQueue.length) return;
+    g.spawnGapT -= dt;
+    if (aliveCount(g) < spawnCap(g) && g.spawnGapT <= 0) {
+      var spec = g.spawnQueue.shift().split(':');
+      var x = spec[1] === 'L' ? AR.wallL + 26 : AR.wallR - 26;
+      var face = spec[1] === 'L' ? 1 : -1;
+      g.enemies.push(mkEnemy(spec[0], g.level, x, face));
+      fx(g, 'dust', x, AR.floorY, { n: 6 });
+      g.spawnGapT = 0.5;
+    }
+  }
+
+  // ---------- damage ----------
+  function damagePlayer(g, d, fromX, opts) {
+    var p = g.player;
+    if (p.dead) return false;
+    // Desert counter: dodging INTO the blow with dash i-frames rewards the
+    // next hit (Kimi's idea) — slow-mo beat, distinct sound, ×1.5 damage.
+    if (p.dashT > 0) {
+      if (p.powerCd <= 0) {
+        p.powerHitT = 1.5; p.powerCd = 1.2;
+        g.hitstop = Math.max(g.hitstop, 0.14);
+        fx(g, 'sparkle', p.x, p.y - 70, {});
+        float(g, p.x, p.y - 96, 'x1.5', 'terra');
+        sfx(g, 'perfect');
+      }
+      return false;
+    }
+    if (p.iframes > 0) return false;
+    p.hp -= d;
+    p.hitFlash = 0.18;
+    p.iframes = 0.5;
+    g.combo = 0;
+    g.hurtCount++;
+    var dir = p.x < fromX ? -1 : 1;
+    p.vx = dir * (opts && opts.kb ? opts.kb : 260);
+    if (opts && opts.up) p.vy = -opts.up;
+    p.state = 'hurt'; p.stateT = 0; p.attack = null;
+    g.hitstop = Math.max(g.hitstop, 0.07);
+    g.shake = Math.max(g.shake, 5);
+    fx(g, 'blood', p.x, p.y - 60, { n: 6 });
+    fx(g, 'impact', p.x, p.y - 60, {});
+    sfx(g, 'hurt');
+    if (p.hp <= 0) {
+      p.hp = 0; p.dead = true; p.state = 'dead'; p.stateT = 0;
+      g.phase = 'lost'; g.phaseT = 0;
+      g.hitstop = 0.25; g.shake = 9;
+      sfx(g, 'gameover');
+    }
+    return true;
+  }
+  function damageFighter(g, f, d, fromX, kb, heavy) {
+    if (f.dead || f.iframes > 0) return false;
+    f.hp -= d;
+    f.hitFlash = 0.15;
+    var dir = f.x < fromX ? -1 : 1;
+    if (f.kind === 'boss') {
+      // bosses keep their poise: damage yes, stunlock no
+      f.vx = dir * kb * 0.12;
+    } else {
+      f.vx = dir * kb * (f.kbMul !== undefined ? f.kbMul : 1);
+      // brutes shrug off light hits
+      var stunnable = f.type !== 'brute' || heavy;
+      if (stunnable && f.state !== 'spawn') { f.state = 'hurt'; f.stateT = 0; f.attack = null; }
+    }
+    g.hitstop = Math.max(g.hitstop, heavy ? 0.11 : 0.06);
+    g.shake = Math.max(g.shake, heavy ? 7 : 3);
+    fx(g, 'ink', f.x + (f.x < fromX ? -8 : 8), f.y - 86 * f.scale * 0.6, { n: heavy ? 8 : 5 });
+    if (heavy) fx(g, 'impact', f.x, f.y - 86 * f.scale * 0.6, {});
+    sfx(g, heavy ? 'hitHeavy' : 'hit');
+    if (f.hp <= 0) killFighter(g, f);
+    return true;
+  }
+  function killFighter(g, f) {
+    f.hp = 0; f.dead = true; f.state = 'dead'; f.stateT = 0; f.vx = (f.x < g.player.x ? -1 : 1) * 120;
+    fx(g, 'ink', f.x, f.y - 40, { n: 10 });
+    if (f.kind === 'enemy') {
+      g.kills++;
+      var pts = Math.round(f.score * C.comboMult(g.combo));
+      g.score += pts;
+      float(g, f.x, f.y - 90 * f.scale, '+' + pts, 'ink');
+      sfx(g, 'enemyDie');
+      if (g.rng() < SC.healDropChance) {
+        g.drops.push({ x: f.x, y: AR.floorY, t: 0, life: 6 });
+        sfx(g, 'drop');
+      }
+    } else if (f.kind === 'boss') {
+      f.gravOff = false;
+      g.kills++;
+      var bp = Math.round(f.score * C.comboMult(g.combo));
+      g.score += bp;
+      float(g, f.x, f.y - 90 * f.scale, '+' + bp, 'terra');
+      g.hitstop = 0.3; g.shake = 10;
+      sfx(g, 'bossDie');
+      g.phase = 'won'; g.phaseT = 0;
+      banner(g, 'bossDefeated');
+      finishVictory(g);
+    }
+  }
+  function finishVictory(g) {
+    var cfg = C.LEVELS[g.level - 1];
+    var noHit = g.hurtCount === 0;
+    var fast = g.elapsed <= cfg.par;
+    var bonus = 0;
+    if (noHit) { bonus += SC.noHitBonus; float(g, g.player.x, g.player.y - 110, '+' + SC.noHitBonus, 'terra'); }
+    if (fast) { bonus += SC.timeBonus; float(g, g.player.x, g.player.y - 130, '+' + SC.timeBonus, 'terra'); }
+    g.score += bonus;
+    g.result = {
+      won: true, score: g.score, kills: g.kills, maxCombo: g.maxCombo,
+      time: g.elapsed, noHit: noHit, fast: fast,
+      medal: C.medalFor(g.level, g.score)
+    };
+    sfx(g, 'fanfare');
+  }
+
+  // ---------- player update ----------
+  function updatePlayer(g, dt, input) {
+    var p = g.player;
+    p.stateT += dt;
+    if (p.iframes > 0) p.iframes -= dt;
+    if (p.hitFlash > 0) p.hitFlash -= dt;
+    if (p.dashCd > 0) p.dashCd -= dt;
+    if (p.powerCd > 0) p.powerCd -= dt;
+    if (p.powerHitT > 0) p.powerHitT -= dt;
+    if (p.attackBuf > 0) p.attackBuf -= dt;
+    if (p.comboWindowT > 0) p.comboWindowT -= dt;
+    if (p.dead) { physicsBody(p, dt, 0.9); return; }
+
+    var canAct = !p.attack && p.state !== 'hurt';
+    // input buffers
+    if (input.attack) p.attackBuf = 0.18;
+    // dash
+    if (input.dash && p.dashCd <= 0 && p.dashT <= 0 && p.state !== 'hurt' && !p.attack) {
+      var dir = input.left ? -1 : input.right ? 1 : p.face;
+      p.dashT = PH.dashTime; p.dashDir = dir; p.face = dir;
+      p.iframes = Math.max(p.iframes, PH.dashIframes);
+      p.dashCd = PH.dashCd;
+      if (!p.onGround) p.airDashes = Math.max(0, p.airDashes - 1);
+      else p.airDashes = 1;
+      p.state = 'dash'; p.stateT = 0;
+      fx(g, 'speedline', p.x, p.y - 50, { dir: dir });
+      sfx(g, 'dash');
+    }
+    // jump
+    if (input.jump && p.onGround && canAct && p.dashT <= 0) {
+      p.vy = PH.jumpV; p.onGround = false; p.state = 'jump'; p.stateT = 0;
+      fx(g, 'dust', p.x, p.y, { n: 4 });
+      sfx(g, 'jump');
+    }
+    // attack start / chain
+    if (p.attackBuf > 0 && p.state !== 'hurt' && p.dashT <= 0) {
+      if (!p.attack) {
+        startAttackStep(g, p, 0);
+        p.attackBuf = 0;
+      }
+    }
+    // horizontal control
+    if (p.dashT > 0) {
+      p.dashT -= dt;
+      p.vx = (p.dashDir || p.face) * PH.dashSpeed;
+      if (p.dashT <= 0) p.vx *= 0.35;
+    } else if (p.attack) {
+      p.vx *= Math.pow(0.001, dt); // commit while attacking
+    } else if (p.state === 'hurt') {
+      p.vx *= Math.pow(0.05, dt);
+      if (p.stateT > 0.28) { p.state = 'idle'; p.stateT = 0; }
+    } else {
+      var mv = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+      p.vx = mv * PH.playerSpeed;
+      if (mv !== 0) { p.face = mv; p.runPhase += dt * 10; }
+      p.state = p.onGround ? (mv !== 0 ? 'run' : 'idle') : 'jump';
+    }
+    physicsBody(p, dt, 1);
+    if (p.onGround && p.state !== 'run') p.runPhase = 0;
+
+    // attack progression
+    if (p.attack) progressAttack(g, p, dt, g.enemies, g.boss);
+  }
+
+  function startAttackStep(g, p, stepIdx) {
+    var spec = p.weapon.steps[stepIdx];
+    p.attack = {
+      step: stepIdx, phase: 'w', t: 0, spec: spec,
+      hitDone: [], total: p.weapon.steps.length
+    };
+    p.state = 'attack'; p.stateT = 0;
+    sfx(g, 'swing', stepIdx === p.weapon.steps.length - 1 ? 1 : 0.7);
+  }
+
+  function progressAttack(g, p, dt, enemies, boss) {
+    var a = p.attack, w = p.weapon;
+    a.t += dt;
+    if (a.phase === 'w' && a.t >= a.spec.w) { a.phase = 'a'; a.t = 0;
+      if (w.key === 'spear') p.vx = p.face * 190;
+      if (w.key === 'sledge' && p.onGround) sledgeQuake(g, p);
+    }
+    if (a.phase === 'a') {
+      var box = meleeBox(p, w.reach, w.arcH);
+      var targets = enemies.filter(function (e) { return !e.dead && e.state !== 'spawn'; });
+      if (boss && !boss.dead && boss.state !== 'enter') targets = targets.concat([boss]);
+      for (var i = 0; i < targets.length; i++) {
+        var tgt = targets[i];
+        if (a.hitDone.indexOf(tgt) >= 0) continue;
+        if (overlap(box, bodyBox(tgt))) {
+          a.hitDone.push(tgt);
+          var dmg = a.spec.d * (p.powerHitT > 0 ? 1.5 : 1);
+          var powered = p.powerHitT > 0;
+          if (powered) p.powerHitT = 0;
+          if (damageFighter(g, tgt, dmg, p.x, a.spec.kb, a.spec.heavy || powered)) {
+            g.combo++; g.comboT = SC.comboWindow;
+            if (g.combo > g.maxCombo) g.maxCombo = g.combo;
+            if (g.combo > 0 && g.combo % 5 === 0) {
+              float(g, p.x, p.y - 120, 'x' + C.comboMult(g.combo), 'terra');
+              sfx(g, 'combo', Math.min(1, 0.4 + g.combo * 0.02));
+            }
+          }
+        }
+      }
+      if (a.t >= a.spec.a) { a.phase = 'r'; a.t = 0; }
+    }
+    if (a.phase === 'r') {
+      var last = a.step === w.steps.length - 1;
+      var chaining = p.attackBuf > 0 && !last;
+      if (chaining) { p.attackBuf = 0; startAttackStep(g, p, a.step + 1); return; }
+      if (a.t >= a.spec.r) {
+        p.attack = null; p.comboWindowT = 0.5;
+        p.state = p.onGround ? 'idle' : 'jump';
+      }
+    }
+  }
+
+  function sledgeQuake(g, p) {
+    var box = {
+      x: Math.min(p.x, p.x + p.face * (p.weapon.reach + p.weapon.splash)),
+      y: AR.floorY - 30, w: p.weapon.reach + p.weapon.splash, h: 40
+    };
+    if (p.face < 0) box.x = p.x - (p.weapon.reach + p.weapon.splash);
+    g.shake = Math.max(g.shake, 5);
+    fx(g, 'dust', p.x + p.face * 40, AR.floorY, { n: 8 });
+    sfx(g, 'quake');
+    var targets = g.enemies.filter(function (e) { return !e.dead && e.state !== 'spawn' && e.onGround; });
+    if (g.boss && !g.boss.dead && g.boss.onGround) targets = targets.concat([g.boss]);
+    targets.forEach(function (e) {
+      if (overlap(box, bodyBox(e)) && e !== g.player) {
+        damageFighter(g, e, p.weapon.quakeDmg || 8, p.x, 200, false);
+      }
+    });
+  }
+
+  function physicsBody(f, dt, friction) {
+    if (!f.gravOff) f.vy += PH.gravity * dt;
+    f.x += f.vx * dt;
+    f.y += f.vy * dt;
+    if (f.y >= AR.floorY) {
+      if (!f.onGround && f.kind === 'player' && f.vy > 500) { /* land */ }
+      f.y = AR.floorY; f.vy = 0;
+      if (!f.onGround && f.kind === 'player') { f.airDashes = 1; }
+      f.onGround = true;
+    } else f.onGround = false;
+    if (f.x < AR.wallL) { f.x = AR.wallL; f.vx = Math.max(0, f.vx); }
+    if (f.x > AR.wallR) { f.x = AR.wallR; f.vx = Math.min(0, f.vx); }
+  }
+
+  // ---------- enemy AI ----------
+  function updateEnemy(g, e, dt) {
+    e.stateT += dt;
+    if (e.hitFlash > 0) e.hitFlash -= dt;
+    if (e.dead) {
+      e.vx *= Math.pow(0.05, dt);
+      physicsBody(e, dt, 0.1);
+      return;
+    }
+    var p = g.player;
+    var dx = p.x - e.x, adx = Math.abs(dx), dir = dx > 0 ? 1 : -1;
+
+    if (e.state === 'spawn') {
+      if (e.stateT >= 0.5) { e.state = 'idle'; e.stateT = 0; }
+      return;
+    }
+    if (e.state === 'hurt') {
+      e.vx *= Math.pow(0.04, dt);
+      if (e.stateT > 0.24) { e.state = 'idle'; e.stateT = 0; }
+      physicsBody(e, dt, 1);
+      return;
+    }
+    if (e.attack) { progressEnemyAttack(g, e, dt); physicsBody(e, dt, 1); return; }
+    if (e.cd > 0) e.cd -= dt;
+
+    if (e.type === 'bandit') {
+      e.face = dir;
+      if (adx > e.reach * 0.85) { e.vx = dir * e.speed; e.state = 'run'; e.runPhase += dt * 9; }
+      else {
+        e.vx = 0; e.state = 'idle';
+        if (e.cd <= 0 && !p.dead) beginEnemyAttack(g, e);
+      }
+    } else if (e.type === 'scout') {
+      if (e.retreatT > 0) {
+        e.retreatT -= dt; e.face = dir; e.vx = -dir * e.speed * 0.8; e.state = 'run'; e.runPhase += dt * 12;
+      } else if (adx > e.reach * 0.9) { e.vx = dir * e.speed; e.face = dir; e.state = 'run'; e.runPhase += dt * 14; }
+      else {
+        e.vx = 0; e.state = 'idle'; e.face = dir;
+        if (e.cd <= 0 && !p.dead) beginEnemyAttack(g, e);
+      }
+    } else if (e.type === 'slinger') {
+      e.face = dir;
+      if (e.wind === 'throwing') { e.vx = 0; e.state = 'windup'; return; }
+      if (adx < 240) { e.vx = -dir * e.speed; e.state = 'run'; e.runPhase += dt * 10; }
+      else if (adx > 380) { e.vx = dir * e.speed; e.state = 'run'; e.runPhase += dt * 10; }
+      else {
+        e.vx = 0; e.state = 'idle';
+        if (e.cd <= 0 && !p.dead) {
+          e.wind = 'throwing'; e.state = 'windup'; e.stateT = 0; e.windT = 0;
+        }
+      }
+      if (e.wind === 'throwing') {
+        e.windT += dt;
+        if (e.windT >= e.windup) {
+          throwStone(g, e);
+          e.wind = null; e.cd = e.atkCd; e.state = 'idle';
+        }
+      }
+    } else if (e.type === 'brute') {
+      e.face = dir;
+      if (adx > e.reach * 0.9) { e.vx = dir * e.speed; e.state = 'run'; e.runPhase += dt * 6; }
+      else {
+        e.vx = 0; e.state = 'idle';
+        if (e.cd <= 0 && !p.dead) beginEnemyAttack(g, e);
+      }
+    }
+    // separation from other enemies
+    g.enemies.forEach(function (o) {
+      if (o === e || o.dead) return;
+      var d = e.x - o.x;
+      if (Math.abs(d) < 34) e.x += (d >= 0 ? 1 : -1) * 26 * dt;
+    });
+    physicsBody(e, dt, 1);
+  }
+
+  function beginEnemyAttack(g, e) {
+    e.attack = { phase: 'w', t: 0, hitDone: false };
+    e.state = 'windup'; e.stateT = 0;
+    e.face = g.player.x > e.x ? 1 : -1;
+  }
+  function progressEnemyAttack(g, e, dt) {
+    var a = e.attack;
+    a.t += dt;
+    if (a.phase === 'w' && a.t >= e.windup) { a.phase = 'a'; a.t = 0; sfx(g, 'swing', 0.6); }
+    if (a.phase === 'a') {
+      var box = meleeBox(e, e.reach, 44);
+      if (!a.hitDone && overlap(box, bodyBox(g.player))) {
+        a.hitDone = true;
+        damagePlayer(g, e.dmg, e.x, { kb: e.type === 'brute' ? 420 : 240, up: e.type === 'brute' ? 260 : 120 });
+      }
+      if (a.t >= e.active) { a.phase = 'r'; a.t = 0; }
+    }
+    if (a.phase === 'r' && a.t >= e.recover) {
+      e.attack = null; e.cd = e.atkCd; e.state = 'idle';
+      if (e.type === 'scout') e.retreatT = 0.6;
+    }
+  }
+  function throwStone(g, e) {
+    var p = g.player;
+    var T = 0.9;
+    var tx = p.x + p.vx * 0.35; // lead the player
+    var dx = tx - e.x;
+    var dy = (AR.floorY - 40) - (e.y - 60);
+    g.projectiles.push({
+      type: 'stone', from: 'enemy', x: e.x + e.face * 14, y: e.y - 60,
+      vx: dx / T, vy: dy / T - 0.5 * PH.gravity * T,
+      r: 7, dmg: e.dmg, grav: true
+    });
+    sfx(g, 'throw');
+  }
+
+  // ---------- projectiles / zones / drops ----------
+  function updateProjectiles(g, dt) {
+    var p = g.player;
+    for (var i = g.projectiles.length - 1; i >= 0; i--) {
+      var pr = g.projectiles[i];
+      if (pr.delay > 0) { pr.delay -= dt; if (pr.delay > 0) continue; }
+      if (pr.grav) pr.vy += PH.gravity * dt;
+      pr.x += pr.vx * dt;
+      pr.y += pr.vy * dt;
+      var life = pr.life !== undefined ? (pr.life -= dt) : (pr.life = 3);
+      if (pr.type === 'shock') pr.y = AR.floorY;
+      // hit player
+      if (!p.dead && p.iframes <= 0 && p.dashT <= 0) {
+        var pw = pr.type === 'shock' ? 20 : pr.type === 'rock' ? 16 : pr.r;
+        var ph2 = pr.type === 'shock' ? 30 : pr.type === 'rock' ? 20 : pr.r;
+        if (Math.abs(pr.x - p.x) < pw + 12 && pr.y + ph2 > p.y - 86 && pr.y - ph2 < p.y) {
+          damagePlayer(g, pr.dmg, pr.x, { kb: 220, up: pr.type === 'rock' ? 200 : 120 });
+          g.projectiles.splice(i, 1);
+          continue;
+        }
+      }
+      var gone = false;
+      if (pr.type === 'bolt' || pr.type === 'feather') {
+        if (pr.x < AR.wallL - 40 || pr.x > AR.wallR + 40 || pr.y < -40 || pr.y > AR.floorY + 40) gone = true;
+      } else if (pr.y >= AR.floorY) {
+        fx(g, pr.type === 'rock' ? 'dust' : 'dust', pr.x, AR.floorY, { n: 4 });
+        gone = true;
+      } else if (pr.x < AR.wallL - 60 || pr.x > AR.wallR + 60) gone = true;
+      if (life <= 0) gone = true;
+      if (gone) g.projectiles.splice(i, 1);
+    }
+  }
+  function updateZones(g, dt) {
+    var p = g.player;
+    g.zones = g.zones.filter(function (z) {
+      z.t += dt;
+      if (z.t >= z.warm && z.t < z.warm + z.burn) {
+        if (Math.abs(p.x - z.x) < z.r && Math.abs(p.y - AR.floorY) < 14) {
+          z.tick = (z.tick || 0) + dt;
+          if (z.tick >= 0.5) {
+            z.tick = 0;
+            if (p.iframes <= 0 && p.dashT <= 0 && !p.dead) {
+              p.hp -= z.dps * 0.5; p.hitFlash = 0.1;
+              fx(g, 'blood', p.x, p.y - 50, { n: 2 });
+              if (p.hp <= 0) damagePlayer(g, 1, p.x + 10, {});
+            }
+          }
+        }
+      }
+      return z.t < z.warm + z.burn;
+    });
+  }
+  function updateDrops(g, dt) {
+    var p = g.player;
+    for (var i = g.drops.length - 1; i >= 0; i--) {
+      var d = g.drops[i];
+      d.t += dt;
+      if (d.t > d.life) { g.drops.splice(i, 1); continue; }
+      if (!p.dead && Math.abs(p.x - d.x) < 30 && Math.abs(p.y - d.y) < 60) {
+        p.hp = Math.min(p.maxHp, p.hp + SC.healAmount);
+        float(g, d.x, d.y - 40, '+' + SC.healAmount, 'terra');
+        fx(g, 'sparkle', d.x, d.y - 20, {});
+        sfx(g, 'pickup');
+        g.drops.splice(i, 1);
+      }
+    }
+  }
+
+  // ---------- bosses ----------
+  function bossEnrageCheck(g, b) {
+    if (!b.enraged && b.hp <= b.maxHp * 0.5) {
+      b.enraged = true;
+      banner(g, 'enrage', b.key);
+      g.shake = Math.max(g.shake, 6);
+      sfx(g, 'enrage');
+    }
+    // mercy heals at 75 / 50 / 25 %
+    var marks = [0.75, 0.5, 0.25];
+    for (var i = 0; i < 3; i++) {
+      if (b.hp <= b.maxHp * marks[i] && b.mercyMark <= i) {
+        b.mercyMark = i + 1;
+        var side = g.player.x < (AR.wallL + AR.wallR) / 2 ? AR.wallR - 120 : AR.wallL + 120;
+        g.drops.push({ x: side, y: AR.floorY, t: 0, life: 8 });
+        sfx(g, 'drop');
+      }
+    }
+  }
+  function bossCdMul(b) { return b.enraged ? 0.85 : 1; }
+  function shockwave(g, x, dmg) {
+    g.projectiles.push({ type: 'shock', from: 'enemy', x: x, y: AR.floorY, vx: 330, vy: 0, dmg: dmg, life: 1.4, r: 10 });
+    g.projectiles.push({ type: 'shock', from: 'enemy', x: x, y: AR.floorY, vx: -330, vy: 0, dmg: dmg, life: 1.4, r: 10 });
+    fx(g, 'dust', x, AR.floorY, { n: 8 });
+    g.shake = Math.max(g.shake, 6);
+    sfx(g, 'shockwave');
+  }
+
+  function updateBoss(g, dt) {
+    var b = g.boss, p = g.player;
+    if (!b) return;
+    b.stateT += dt;
+    if (b.hitFlash > 0) b.hitFlash -= dt;
+    if (b.dead) { b.vx *= Math.pow(0.02, dt); physicsBody(b, dt, 1); return; }
+    bossEnrageCheck(g, b);
+    var dx = p.x - b.x, adx = Math.abs(dx), dir = dx > 0 ? 1 : -1;
+    var mul = bossCdMul(b);
+    if (b.leapCd > 0) b.leapCd -= dt / mul;
+    if (b.swoopCd > 0) b.swoopCd -= dt / mul;
+    if (b.rainCd > 0) b.rainCd -= dt / mul;
+    if (b.zoneCd > 0) b.zoneCd -= dt / mul;
+    if (b.volleyCd > 0) b.volleyCd -= dt / mul;
+    if (b.patCd > 0) b.patCd -= dt / mul;
+
+    if (b.state === 'enter') {
+      b.face = dir;
+      if (b.stateT > 1.2) { b.state = 'idle'; b.stateT = 0; }
+      return;
+    }
+    if (b.attack) { progressBossAttack(g, b, dt); if (!b.gravOff) physicsBody(b, dt, 1); return; }
+
+    // Cactus Jack: slam on landing
+    if (b.key === 'cactus' && b.state === 'leap' && b.onGround && b.stateT > 0.08) {
+      shockwave(g, b.x, 12);
+      b.state = 'land'; b.stateT = 0; b.vx = 0;
+      return;
+    }
+
+    switch (b.key) {
+      case 'cactus': updateCactus(g, b, dt, adx, dir, mul); break;
+      case 'sidewinder': updateSidewinder(g, b, dt, adx, dir, mul); break;
+      case 'vulture': updateVulture(g, b, dt, adx, dir, mul); break;
+      case 'titan': updateTitan(g, b, dt, adx, dir, mul); break;
+      case 'elsol': updateElSol(g, b, dt, adx, dir, mul); break;
+    }
+    if (!b.gravOff) physicsBody(b, dt, 1);
+    else {
+      b.x = Math.max(AR.wallL + 26, Math.min(AR.wallR - 26, b.x));
+      b.vx = 0; b.vy = 0;
+    }
+  }
+
+  function bossMelee(g, b, dmg, reach, arcH, kb, up, tele, act, rec) {
+    b.attack = { phase: 'w', t: 0, spec: { dmg: dmg, reach: reach, arcH: arcH, kb: kb, up: up, tele: tele, act: act, rec: rec }, hitDone: false };
+    b.state = 'windup'; b.stateT = 0;
+    b.face = g.player.x > b.x ? 1 : -1;
+  }
+  function progressBossAttack(g, b, dt) {
+    var a = b.attack, s = a.spec;
+    a.t += dt;
+    if (a.phase === 'w' && a.t >= s.tele) { a.phase = 'a'; a.t = 0; sfx(g, 'swing', 1); }
+    if (a.phase === 'a') {
+      var box = meleeBox(b, s.reach, s.arcH);
+      if (!a.hitDone && overlap(box, bodyBox(g.player))) {
+        a.hitDone = true;
+        damagePlayer(g, s.dmg, b.x, { kb: s.kb, up: s.up });
+      }
+      if (a.t >= s.act) { a.phase = 'r'; a.t = 0; }
+    }
+    if (a.phase === 'r' && a.t >= s.rec) { b.attack = null; b.state = 'idle'; b.stateT = 0; }
+  }
+
+  // — Cactus Jack: walk, club swing, leaping slam with shockwaves —
+  function updateCactus(g, b, dt, adx, dir, mul) {
+    if (b.state === 'land') {
+      b.vx = 0;
+      if (b.stateT >= 0.6) { b.state = 'idle'; b.stateT = 0; }
+      return;
+    }
+    if (b.leapCd <= 0 && b.onGround && adx > 120) { cactusLeap(g, b, dir); return; }
+    if (adx < b.reach * b.scale * 0.8) {
+      b.vx = 0;
+      if (b.patCd <= 0) {
+        bossMelee(g, b, b.dmg, 84, 80, 380, 160, 0.55 * mul, 0.12, 0.5);
+        b.patCd = 2.6 * mul;
+      }
+    } else {
+      b.vx = dir * b.speed; b.face = dir; b.state = 'run'; b.runPhase += dt * 7;
+    }
+  }
+  function cactusLeap(g, b, dir) {
+    var p = g.player;
+    var T = 0.62;
+    b.vy = -680;
+    b.vx = Math.max(-520, Math.min(520, (p.x - b.x) / T));
+    b.onGround = false;
+    b.state = 'leap'; b.stateT = 0;
+    b.leapCd = b.enraged ? 4.5 : 6;
+    b.leapLanded = false;
+    fx(g, 'dust', b.x, AR.floorY, { n: 6 });
+    sfx(g, 'jump', 0.6);
+  }
+  // — Sidewinder: spacing, telegraphed dash-slash, punish stagger —
+  function updateSidewinder(g, b, dt, adx, dir, mul) {
+    if (b.state === 'dashTele') {
+      b.vx = 0;
+      if (b.stateT >= 0.5) {
+        b.state = 'dashing'; b.stateT = 0; b.hitOnce = false;
+        b.dashDir = b.playerLockX > b.x ? 1 : -1; b.face = b.dashDir;
+        sfx(g, 'dash', 1);
+      }
+      return;
+    }
+    if (b.state === 'dashing') {
+      b.vx = b.dashDir * 900;
+      if (b.stateT > 0.12 && !b.hitOnce) {
+        if (Math.abs(g.player.x - b.x) < 60 * b.scale && g.player.y > AR.floorY - 70) {
+          if (damagePlayer(g, b.dmg, b.x, { kb: 300, up: 200 })) b.hitOnce = true;
+        }
+      }
+      if (b.x <= AR.wallL + 30 || b.x >= AR.wallR - 30) {
+        b.vx = 0; b.state = 'stunned'; b.stateT = 0;
+        fx(g, 'dust', b.x, AR.floorY, { n: 6 });
+        g.shake = Math.max(g.shake, 4);
+      }
+      return;
+    }
+    if (b.state === 'stunned') {
+      b.vx = 0;
+      if (b.stateT >= 1.0) {
+        if (b.dashCount > 1) {
+          b.dashCount--; b.state = 'dashTele'; b.stateT = 0;
+          b.playerLockX = g.player.x;
+        } else { b.state = 'idle'; b.stateT = 0; }
+      }
+      return;
+    }
+    if (adx < 95 * b.scale) {
+      b.vx = 0;
+      if (b.patCd <= 0) {
+        bossMelee(g, b, 10, 90, 90, 260, 120, 0.3 * mul, 0.1, 0.35);
+        b.patCd = (1.3 + g.rng() * 0.2) * mul;
+      }
+      return;
+    }
+    // spacing + dash pattern
+    if (adx < 260) { b.vx = -dir * b.speed * 0.7; b.face = dir; b.state = 'run'; b.runPhase += dt * 11; }
+    else if (adx > 340) { b.vx = dir * b.speed; b.face = dir; b.state = 'run'; b.runPhase += dt * 11; }
+    else { b.vx = 0; b.state = 'idle'; }
+    if (b.patCd <= 0) {
+      b.state = 'dashTele'; b.stateT = 0; b.vx = 0;
+      b.playerLockX = g.player.x;
+      b.dashCount = b.enraged ? 2 : 1;
+      b.patCd = 3.2 * mul;
+    }
+  }
+  // — The Vulture: hovers high/low, feather fans on low hover, telegraphed swoop —
+  function updateVulture(g, b, dt, adx, dir, mul) {
+    b.gravOff = true;
+    if (b.state === 'swoopTele') {
+      if (b.stateT >= 0.5) {
+        var p = g.player;
+        var dx = p.x - b.x, dy = (p.y - 40) - b.y;
+        var L = Math.hypot(dx, dy) || 1;
+        b.swVx = dx / L * 700; b.swVy = dy / L * 700;
+        b.state = 'swooping'; b.stateT = 0; b.hitOnce = false;
+        sfx(g, 'dash', 0.9);
+      }
+      return;
+    }
+    if (b.state === 'swooping') {
+      b.x += b.swVx * dt; b.y += b.swVy * dt;
+      if (!b.hitOnce && Math.abs(g.player.x - b.x) < 55 * b.scale && Math.abs((g.player.y - 44) - b.y) < 60) {
+        if (damagePlayer(g, b.dmg, b.x, { kb: 320, up: 240 })) b.hitOnce = true;
+      }
+      if (b.stateT > 0.9 || b.y > AR.floorY - 60 || b.x < AR.wallL + 20 || b.x > AR.wallR - 20) {
+        b.state = 'hoverLow'; b.stateT = 0; b.hoverT = 0;
+      }
+      return;
+    }
+    // hover cycle
+    b.hoverT = (b.hoverT || 0) + dt;
+    var high = b.state === 'hoverHigh';
+    var targetY = high ? 250 : 400;
+    var dur = high ? (b.enraged ? 1.2 : 2.0) : 2.6;
+    b.y += (targetY - b.y) * Math.min(1, dt * 3);
+    var want = 200, d2 = want - adx;
+    if (Math.abs(d2) > 40) { b.vx = dir * b.speed * 0.6 * (d2 > 0 ? 1 : -1); b.face = dir; b.runPhase += dt * 6; }
+    else { b.vx = 0; b.face = dir; }
+    b.x += b.vx * dt;
+    b.x = Math.max(AR.wallL + 30, Math.min(AR.wallR - 30, b.x));
+    if (b.swoopCd <= 0) {
+      b.state = 'swoopTele'; b.stateT = 0;
+      b.swoopCd = b.enraged ? 4.5 : 6;
+      return;
+    }
+    if (!high && b.patCd <= 0) {
+      featherFan(g, b);
+      b.patCd = 3.0 * mul;
+    }
+    if (b.hoverT > dur) {
+      b.state = high ? 'hoverLow' : 'hoverHigh';
+      b.hoverT = 0;
+    }
+  }
+  function featherFan(g, b) {
+    var p = g.player;
+    var n = b.enraged ? 5 : 3;
+    var cx = p.x - b.x, cy = (p.y - 50) - b.y;
+    var base = Math.atan2(cy, cx);
+    for (var i = 0; i < n; i++) {
+      var a2 = base + (i - (n - 1) / 2) * (Math.PI / 14);
+      g.projectiles.push({
+        type: 'feather', from: 'enemy', x: b.x, y: b.y,
+        vx: Math.cos(a2) * 300, vy: Math.sin(a2) * 300, r: 8, dmg: 8
+      });
+    }
+    sfx(g, 'throw');
+  }
+  // — Dust Titan: slow walk, smash, stomp waves, telegraphed rock rain —
+  function updateTitan(g, b, dt, adx, dir, mul) {
+    if (b.state === 'stompTele') {
+      b.vx = 0; b.face = dir;
+      if (b.stateT >= 0.4) {
+        shockwave(g, b.x, 12);
+        b.state = 'idle'; b.stateT = 0;
+      }
+      return;
+    }
+    if (b.state === 'rainTele') {
+      b.vx = 0;
+      if (b.stateT >= 0.5) {
+        var n = b.enraged ? 8 : 5;
+        for (var i = 0; i < n; i++) {
+          var px = g.player.x + (g.rng() * 2 - 1) * (60 + i * 26);
+          px = Math.max(AR.wallL + 30, Math.min(AR.wallR - 30, px));
+          g.zones.push({ x: px, r: 34, warm: 0.8, burn: 0.2, dps: 0, warn: true });
+          g.projectiles.push({
+            type: 'rock', from: 'enemy', x: px, y: -30 - i * 40,
+            vx: 0, vy: 260 + g.rng() * 120, r: 14, dmg: 12, grav: false, delay: 0.8
+          });
+        }
+        sfx(g, 'warning');
+        b.state = 'idle'; b.stateT = 0;
+        b.rainCd = 8 * mul;
+      }
+      return;
+    }
+    if (b.rainCd <= 0 && adx > 200) { b.state = 'rainTele'; b.stateT = 0; b.face = dir; return; }
+    if (b.leapCd <= 0 && adx < 400) {
+      // telegraphed stomp waves
+      b.state = 'stompTele'; b.stateT = 0;
+      b.leapCd = 7 * mul;
+      return;
+    }
+    if (adx < 110 * b.scale) {
+      b.vx = 0;
+      if (b.patCd <= 0) {
+        bossMelee(g, b, b.dmg, 110, 120, 460, 220, 0.65 * mul, 0.12, 0.6);
+        b.patCd = 3.4 * mul;
+        sfx(g, 'quake');
+      }
+    } else {
+      b.vx = dir * b.speed; b.face = dir; b.state = 'run'; b.runPhase += dt * 5;
+    }
+  }
+  // — El Sol: aimed bolts, scorch zones, charging dash, close swipe; rain when enraged —
+  function updateElSol(g, b, dt, adx, dir, mul) {
+    if (b.state === 'chargeTele') {
+      b.vx = 0;
+      if (b.stateT >= 0.5) {
+        b.state = 'charging'; b.stateT = 0; b.hitOnce = false;
+        b.dashDir = b.playerLockX > b.x ? 1 : -1; b.face = b.dashDir;
+        sfx(g, 'dash', 1);
+      }
+      return;
+    }
+    if (b.state === 'charging') {
+      b.vx = b.dashDir * 800;
+      if (b.stateT > 0.1 && !b.hitOnce && Math.abs(g.player.x - b.x) < 60 * b.scale) {
+        if (damagePlayer(g, b.dmg, b.x, { kb: 340, up: 220 })) b.hitOnce = true;
+      }
+      if (b.x <= AR.wallL + 30 || b.x >= AR.wallR - 30) {
+        b.vx = 0; b.state = 'idle'; b.stateT = 0;
+        fx(g, 'dust', b.x, AR.floorY, { n: 6 }); g.shake = Math.max(g.shake, 4);
+      }
+      return;
+    }
+    if (b.rainCd <= 0) {
+      var n = 4;
+      for (var i = 0; i < n; i++) {
+        var px = g.player.x + (g.rng() * 2 - 1) * (70 + i * 30);
+        px = Math.max(AR.wallL + 30, Math.min(AR.wallR - 30, px));
+        g.projectiles.push({
+          type: 'rock', from: 'enemy', x: px, y: -30 - i * 40,
+          vx: 0, vy: 300 + g.rng() * 100, r: 12, dmg: 10, grav: false, delay: 0.8
+        });
+      }
+      sfx(g, 'warning');
+      b.rainCd = 9 * mul;
+      return;
+    }
+    if (b.zoneCd <= 0) {
+      for (var z = 0; z < 2; z++) {
+        var zx = g.player.x + (z === 0 ? -1 : 1) * (90 + g.rng() * 80);
+        zx = Math.max(AR.wallL + 50, Math.min(AR.wallR - 50, zx));
+        g.zones.push({ x: zx, r: 70, warm: 0.7, burn: 3, dps: 12, tick: 0 });
+      }
+      sfx(g, 'warning');
+      b.zoneCd = 8 * mul;
+      return;
+    }
+    if (b.volleyCd <= 0) {
+      var p = g.player;
+      var base = Math.atan2((p.y - 50) - b.y, p.x - b.x);
+      var nb = b.enraged ? 5 : 3;
+      for (var k = 0; k < nb; k++) {
+        var a2 = base + (k - (nb - 1) / 2) * (Math.PI / 16);
+        g.projectiles.push({
+          type: 'bolt', from: 'enemy', x: b.x + Math.cos(base) * 40, y: b.y - 90 * b.scale * 0.6,
+          vx: Math.cos(a2) * 340, vy: Math.sin(a2) * 340, r: 8, dmg: 9
+        });
+      }
+      sfx(g, 'throw');
+      b.volleyCd = 3.2 * mul;
+      return;
+    }
+    if (adx < 90 * b.scale) {
+      b.vx = 0;
+      if (b.patCd <= 0) {
+        bossMelee(g, b, b.dmg, 100, 100, 380, 180, 0.35 * mul, 0.1, 0.45);
+        b.patCd = 2.2 * mul;
+      }
+      return;
+    }
+    if (b.patCd <= 0 && adx > 240) {
+      b.state = 'chargeTele'; b.stateT = 0;
+      b.playerLockX = g.player.x;
+      b.patCd = 6 * mul;
+      return;
+    }
+    if (adx < 300) { b.vx = -dir * b.speed * 0.6; b.face = dir; b.state = 'run'; b.runPhase += dt * 8; }
+    else { b.vx = 0; b.state = 'idle'; b.face = dir; }
+  }
+
+  // ---------- particles & floaters ----------
+  function updateParticles(g, dt) {
+    for (var i = g.particles.length - 1; i >= 0; i--) {
+      var pa = g.particles[i];
+      pa.t += dt;
+      if (pa.grav) pa.vy += 1400 * dt;
+      pa.x += pa.vx * dt; pa.y += pa.vy * dt;
+      if (pa.t >= pa.life) g.particles.splice(i, 1);
+    }
+    for (var j = g.floaters.length - 1; j >= 0; j--) {
+      var fl = g.floaters[j];
+      fl.t += dt; fl.y -= 34 * dt;
+      if (fl.t > 1.1) g.floaters.splice(j, 1);
+    }
+  }
+
+  function spawnEventFx(g, e) {
+    var i, n;
+    if (e.kind === 'ink') {
+      n = e.n || 5;
+      for (i = 0; i < n; i++) g.particles.push({
+        x: e.x, y: e.y, vx: (Math.random() * 2 - 1) * 220, vy: -Math.random() * 240,
+        grav: true, t: 0, life: 0.4 + Math.random() * 0.3, r: 2 + Math.random() * 3, col: 'ink'
+      });
+    } else if (e.kind === 'blood') {
+      n = e.n || 6;
+      for (i = 0; i < n; i++) g.particles.push({
+        x: e.x, y: e.y, vx: (Math.random() * 2 - 1) * 260, vy: -Math.random() * 200,
+        grav: true, t: 0, life: 0.35 + Math.random() * 0.3, r: 2 + Math.random() * 3, col: 'terra'
+      });
+    } else if (e.kind === 'dust') {
+      n = e.n || 4;
+      for (i = 0; i < n; i++) g.particles.push({
+        x: e.x + (Math.random() * 2 - 1) * 14, y: e.y - 4,
+        vx: (Math.random() * 2 - 1) * 120, vy: -30 - Math.random() * 60,
+        grav: false, t: 0, life: 0.5 + Math.random() * 0.4, r: 4 + Math.random() * 5, col: 'dust'
+      });
+    } else if (e.kind === 'impact') {
+      g.particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, grav: false, t: 0, life: 0.18, r: 26, col: 'impact' });
+    } else if (e.kind === 'speedline') {
+      for (i = 0; i < 4; i++) g.particles.push({
+        x: e.x, y: e.y + (i - 1.5) * 12, vx: -e.dir * (300 + i * 60), vy: 0,
+        grav: false, t: 0, life: 0.2, r: 18 + i * 4, col: 'line', dir: e.dir
+      });
+    } else if (e.kind === 'sparkle') {
+      for (i = 0; i < 6; i++) g.particles.push({
+        x: e.x, y: e.y, vx: Math.cos(i / 6 * 6.28) * 90, vy: Math.sin(i / 6 * 6.28) * 90,
+        grav: false, t: 0, life: 0.4, r: 2.5, col: 'terra'
+      });
+    }
+  }
+
+  // ---------- main update ----------
+  function update(g, dt, input) {
+    input = input || {};
+    if (g.hitstop > 0) {
+      g.hitstop -= dt;
+      updateParticles(g, dt);
+      return;
+    }
+    g.t += dt;
+    g.elapsed += dt;
+    if (g.bannerT > 0) g.bannerT -= dt;
+    if (g.shake > 0) g.shake = Math.max(0, g.shake - dt * 22);
+    if (g.comboT > 0) { g.comboT -= dt; if (g.comboT <= 0) g.combo = 0; }
+
+    updatePlayer(g, dt, input);
+    g.enemies.forEach(function (e) { updateEnemy(g, e, dt); });
+    g.enemies = g.enemies.filter(function (e) { return !(e.dead && e.stateT > 1.2); });
+    if (g.boss) updateBoss(g, dt);
+    updateProjectiles(g, dt);
+    updateZones(g, dt);
+    updateDrops(g, dt);
+    updateParticles(g, dt);
+
+    // fx events → particles (drained here; sfx events drained by UI)
+    for (var i = g.events.length - 1; i >= 0; i--) {
+      if (g.events[i].type === 'fx') { spawnEventFx(g, g.events[i]); g.events.splice(i, 1); }
+    }
+
+    // phase progression
+    if (g.phase === 'waves') {
+      trySpawn(g, dt);
+      if (!g.spawnQueue.length && aliveCount(g) === 0) nextWave(g);
+    } else if (g.phase === 'bossIntro') {
+      g.phaseT += dt;
+      if (g.phaseT > 1.4 && !g.boss) {
+        g.boss = mkBoss(C.LEVELS[g.level - 1].boss, g.level);
+        g.phase = 'boss';
+      }
+    } else if (g.phase === 'won') {
+      g.phaseT += dt;
+    } else if (g.phase === 'lost') {
+      g.phaseT += dt;
+    }
+  }
+  function drainSfx(g) {
+    var out = [];
+    for (var i = 0; i < g.events.length; i++) if (g.events[i].type === 'sfx') out.push(g.events[i]);
+    g.events = g.events.filter(function (e) { return e.type !== 'sfx'; });
+    return out;
+  }
+
+  globalThis.SS_Engine = {
+    newGame: newGame, update: update, drainSfx: drainSfx,
+    bodyBox: bodyBox, meleeBox: meleeBox, overlap: overlap,
+    mkPlayer: mkPlayer, mkEnemy: mkEnemy, mkBoss: mkBoss,
+    damagePlayer: damagePlayer, damageFighter: damageFighter,
+    comboMult: C.comboMult
+  };
+})();
+
+</script>
+<script>
+/* Stick Showdown — sound effects synthesized with WebAudio. No audio assets.
+   SS_Audio.init() must be called from a user gesture; play(name) is safe to
+   call at any time afterwards (silently no-ops before init or when muted). */
+(function () {
+  'use strict';
+
+  var ctx = null, master = null, enabled = true, inited = false;
+
+  function init() {
+    if (inited) { if (ctx && ctx.state === 'suspended') ctx.resume(); return; }
+    var AC = globalThis.window && (window.AudioContext || window.webkitAudioContext);
+    if (!AC) return;
+    ctx = new AC();
+    master = ctx.createGain();
+    master.gain.value = 0.42;
+    master.connect(ctx.destination);
+    inited = true;
+  }
+  function setEnabled(b) {
+    enabled = b;
+    if (master) master.gain.value = b ? 0.42 : 0;
+  }
+  function isEnabled() { return enabled; }
+
+  function now() { return ctx.currentTime; }
+
+  function tone(o) {
+    // {f, f2, dur, type, vol, delay, attack}
+    if (!ctx || !enabled) return;
+    var t0 = now() + (o.delay || 0);
+    var osc = ctx.createOscillator();
+    var g = ctx.createGain();
+    osc.type = o.type || 'sine';
+    osc.frequency.setValueAtTime(o.f, t0);
+    if (o.f2) osc.frequency.exponentialRampToValueAtTime(Math.max(1, o.f2), t0 + o.dur);
+    var v = (o.vol || 0.5);
+    var a = o.attack || 0.004;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(v, t0 + a);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + o.dur);
+    osc.connect(g); g.connect(master);
+    osc.start(t0); osc.stop(t0 + o.dur + 0.02);
+  }
+
+  var noiseBuf = null;
+  function getNoise() {
+    if (noiseBuf) return noiseBuf;
+    var len = Math.floor(ctx.sampleRate * 0.5);
+    noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var d = noiseBuf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    return noiseBuf;
+  }
+  function noise(o) {
+    // {dur, vol, f, f2, q, type='bandpass', delay}
+    if (!ctx || !enabled) return;
+    var t0 = now() + (o.delay || 0);
+    var src = ctx.createBufferSource();
+    src.buffer = getNoise();
+    src.loop = true;
+    var flt = ctx.createBiquadFilter();
+    flt.type = o.type || 'bandpass';
+    flt.frequency.setValueAtTime(o.f || 800, t0);
+    if (o.f2) flt.frequency.exponentialRampToValueAtTime(Math.max(20, o.f2), t0 + o.dur);
+    flt.Q.value = o.q || 1;
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(o.vol || 0.3, t0 + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + o.dur);
+    src.connect(flt); flt.connect(g); g.connect(master);
+    src.start(t0); src.stop(t0 + o.dur + 0.02);
+  }
+
+  function play(name, vol) {
+    if (!inited || !ctx || !enabled) return;
+    var v = vol === undefined ? 1 : vol;
+    switch (name) {
+      case 'ui':
+        tone({ f: 660, f2: 880, dur: 0.06, type: 'triangle', vol: 0.22 * v });
+        break;
+      case 'swing':
+        noise({ dur: 0.09, vol: 0.22 * v, f: 420, f2: 1500, q: 2 });
+        break;
+      case 'hit':
+        tone({ f: 160, f2: 70, dur: 0.09, type: 'sine', vol: 0.5 * v });
+        noise({ dur: 0.06, vol: 0.25 * v, f: 900, q: 1 });
+        break;
+      case 'hitHeavy':
+        tone({ f: 110, f2: 45, dur: 0.16, type: 'sine', vol: 0.65 * v });
+        noise({ dur: 0.12, vol: 0.3 * v, f: 600, f2: 200, q: 0.8 });
+        tone({ f: 70, dur: 0.14, type: 'square', vol: 0.14 * v });
+        break;
+      case 'hurt':
+        tone({ f: 220, f2: 90, dur: 0.16, type: 'square', vol: 0.2 * v });
+        noise({ dur: 0.1, vol: 0.2 * v, f: 500, q: 2 });
+        break;
+      case 'enemyDie':
+        tone({ f: 320, f2: 60, dur: 0.22, type: 'triangle', vol: 0.4 * v });
+        noise({ dur: 0.15, vol: 0.3 * v, f: 700, f2: 150, q: 1 });
+        break;
+      case 'bossDie':
+        tone({ f: 200, f2: 40, dur: 0.7, type: 'sawtooth', vol: 0.4 * v });
+        noise({ dur: 0.6, vol: 0.35 * v, f: 400, f2: 80, q: 0.7 });
+        tone({ f: 90, f2: 30, dur: 0.8, type: 'sine', vol: 0.5 * v, delay: 0.1 });
+        break;
+      case 'jump':
+        tone({ f: 240, f2: 520, dur: 0.1, type: 'sine', vol: 0.22 * v });
+        break;
+      case 'dash':
+        noise({ dur: 0.14, vol: 0.26 * v, f: 1400, f2: 300, q: 3 });
+        tone({ f: 500, f2: 200, dur: 0.08, type: 'triangle', vol: 0.12 * v });
+        break;
+      case 'throw':
+        tone({ f: 900, f2: 380, dur: 0.16, type: 'sine', vol: 0.16 * v });
+        break;
+      case 'roar':
+      case 'enrage':
+        tone({ f: 60, f2: 42, dur: 0.65, type: 'sawtooth', vol: 0.4 * v });
+        tone({ f: 90, f2: 55, dur: 0.6, type: 'sawtooth', vol: 0.22 * v, delay: 0.05 });
+        noise({ dur: 0.5, vol: 0.22 * v, f: 250, f2: 90, q: 0.8 });
+        if (name === 'enrage') {
+          tone({ f: 440, dur: 0.09, type: 'square', vol: 0.2, delay: 0.3 });
+          tone({ f: 660, dur: 0.09, type: 'square', vol: 0.2, delay: 0.4 });
+        }
+        break;
+      case 'shockwave':
+      case 'quake':
+        tone({ f: 80, f2: 32, dur: 0.3, type: 'sine', vol: 0.55 * v });
+        noise({ dur: 0.25, vol: 0.3 * v, f: 300, f2: 70, q: 0.7 });
+        break;
+      case 'warning':
+        tone({ f: 760, dur: 0.08, type: 'square', vol: 0.18 * v });
+        tone({ f: 760, dur: 0.08, type: 'square', vol: 0.18 * v, delay: 0.14 });
+        break;
+      case 'drop':
+        tone({ f: 520, f2: 780, dur: 0.1, type: 'sine', vol: 0.2 * v });
+        break;
+      case 'pickup':
+        tone({ f: 620, dur: 0.07, type: 'sine', vol: 0.24 * v });
+        tone({ f: 930, dur: 0.09, type: 'sine', vol: 0.24 * v, delay: 0.06 });
+        break;
+      case 'combo':
+        tone({ f: 520, f2: 900, dur: 0.08, type: 'square', vol: 0.1 * v });
+        break;
+      case 'perfect':
+        tone({ f: 880, dur: 0.07, type: 'sine', vol: 0.26 });
+        tone({ f: 1320, dur: 0.12, type: 'sine', vol: 0.22, delay: 0.07 });
+        noise({ dur: 0.1, vol: 0.12, f: 2400, f2: 800, q: 3 });
+        break;
+      case 'unlock':
+        [523, 659, 784, 1047].forEach(function (f, i) {
+          tone({ f: f, dur: 0.12, type: 'triangle', vol: 0.24, delay: i * 0.09 });
+        });
+        break;
+      case 'fanfare':
+        [392, 523, 659, 784].forEach(function (f, i) {
+          tone({ f: f, dur: 0.14, type: 'triangle', vol: 0.26, delay: i * 0.1 });
+        });
+        [196, 262, 330, 392].forEach(function (f, i) {
+          tone({ f: f, dur: 0.5, type: 'sine', vol: 0.16, delay: 0.42 });
+        });
+        break;
+      case 'gameover':
+        [330, 262, 208, 156].forEach(function (f, i) {
+          tone({ f: f, dur: 0.22, type: 'triangle', vol: 0.24, delay: i * 0.16 });
+        });
+        break;
+      case 'start':
+        tone({ f: 392, dur: 0.09, type: 'triangle', vol: 0.25 });
+        tone({ f: 523, dur: 0.12, type: 'triangle', vol: 0.25, delay: 0.08 });
+        break;
+    }
+  }
+
+  globalThis.SS_Audio = {
+    init: init, play: play, setEnabled: setEnabled, isEnabled: isEnabled,
+    get inited() { return inited; }
+  };
+})();
+
+</script>
+<script>
+/* Stick Showdown — canvas rendering: desert-noon arena, animated stickmen,
+   particles, HUD and banners. Pure drawing from engine state; no logic. */
+(function () {
+  'use strict';
+
+  var C = globalThis.SS_Config;
+  var AR = C.ARENA;
+
+  var COL = {
+    sand: '#e8d9b0', sandLight: '#f2e6c8', sky: '#fbf7ec',
+    ink: '#2b2118', inkSoft: 'rgba(43,33,24,0.55)',
+    terra: '#b5502f', ochre: '#c47f3d', dust: '#c9b285',
+    shadow: 'rgba(43,33,24,0.16)', white: '#fdfbf4'
+  };
+
+  // ---------- background ----------
+  var pebbles = null;
+  function makePebbles() {
+    var rng = C.makeRng(1234), out = [];
+    for (var i = 0; i < 26; i++) {
+      out.push({
+        x: 40 + rng() * 880, y: AR.floorY + 8 + rng() * 46,
+        r: 1.5 + rng() * 3, tuft: rng() < 0.4
+      });
+    }
+    return out;
+  }
+  function drawBackground(ctx, t) {
+    // sky
+    ctx.fillStyle = COL.sky;
+    ctx.fillRect(0, 0, AR.W, 240);
+    // sun with hard ring
+    ctx.fillStyle = COL.ochre;
+    ctx.beginPath(); ctx.arc(AR.W - 130, 86, 46, 0, 7); ctx.fill();
+    ctx.fillStyle = COL.sky;
+    ctx.beginPath(); ctx.arc(AR.W - 130, 86, 40, 0, 7); ctx.fill();
+    ctx.strokeStyle = COL.ochre; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(AR.W - 130, 86, 52 + Math.sin(t * 1.4) * 1.5, 0, 7); ctx.stroke();
+    // sun rays (hard, graphic)
+    ctx.strokeStyle = COL.ochre; ctx.lineWidth = 2.5;
+    for (var i = 0; i < 8; i++) {
+      var a = i * Math.PI / 4 + t * 0.05;
+      ctx.beginPath();
+      ctx.moveTo(AR.W - 130 + Math.cos(a) * 60, 86 + Math.sin(a) * 60);
+      ctx.lineTo(AR.W - 130 + Math.cos(a) * (68 + (i % 2) * 8), 86 + Math.sin(a) * (68 + (i % 2) * 8));
+      ctx.stroke();
+    }
+    // dunes
+    ctx.fillStyle = COL.sandLight;
+    ctx.beginPath();
+    ctx.moveTo(0, 240);
+    ctx.quadraticCurveTo(180, 196, 400, 236);
+    ctx.quadraticCurveTo(620, 270, 830, 226);
+    ctx.quadraticCurveTo(920, 208, AR.W, 232);
+    ctx.lineTo(AR.W, 320); ctx.lineTo(0, 320); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = COL.dust;
+    ctx.beginPath();
+    ctx.moveTo(0, 292);
+    ctx.quadraticCurveTo(260, 262, 520, 296);
+    ctx.quadraticCurveTo(760, 326, AR.W, 288);
+    ctx.lineTo(AR.W, 340); ctx.lineTo(0, 340); ctx.closePath(); ctx.fill();
+    // ground
+    ctx.fillStyle = COL.sand;
+    ctx.fillRect(0, 320, AR.W, AR.H - 320);
+    // horizon line
+    ctx.strokeStyle = COL.dust; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, 320); ctx.lineTo(AR.W, 320); ctx.stroke();
+    // arena floor line
+    ctx.strokeStyle = COL.ink; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0, AR.floorY); ctx.lineTo(AR.W, AR.floorY); ctx.stroke();
+    // two lone cacti on the mid-ground
+    ctx.strokeStyle = 'rgba(74,64,54,0.5)'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+    [150, 812].forEach(function (cx2, i) {
+      var h2 = 40 + i * 12;
+      ctx.beginPath(); ctx.moveTo(cx2, 352); ctx.lineTo(cx2, 352 - h2); ctx.stroke();
+      ctx.lineWidth = 5.5;
+      ctx.beginPath();
+      ctx.moveTo(cx2, 352 - h2 * 0.55); ctx.lineTo(cx2 - 11, 352 - h2 * 0.55);
+      ctx.lineTo(cx2 - 11, 352 - h2 * 0.75); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx2, 352 - h2 * 0.35); ctx.lineTo(cx2 + 10, 352 - h2 * 0.35);
+      ctx.lineTo(cx2 + 10, 352 - h2 * 0.6); ctx.stroke();
+      ctx.lineWidth = 7;
+    });
+    // pebbles & tufts
+    if (!pebbles) pebbles = makePebbles();
+    ctx.fillStyle = COL.inkSoft;
+    ctx.strokeStyle = COL.inkSoft; ctx.lineWidth = 1.5;
+    pebbles.forEach(function (p) {
+      if (p.tuft) {
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - 4, p.y - 7);
+        ctx.moveTo(p.x, p.y); ctx.lineTo(p.x, p.y - 9);
+        ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + 4, p.y - 6);
+        ctx.stroke();
+      } else {
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+      }
+    });
+  }
+
+  // ---------- zones, drops, projectiles ----------
+  function drawZones(ctx, g) {
+    g.zones.forEach(function (z) {
+      if (z.t < z.warm) {
+        var k = z.t / z.warm;
+        ctx.save();
+        ctx.strokeStyle = COL.ochre; ctx.lineWidth = 3;
+        ctx.setLineDash([8, 7]);
+        ctx.beginPath();
+        ctx.ellipse(z.x, AR.floorY, z.r * (1.25 - 0.25 * k), 12, 0, 0, 7);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = COL.terra;
+        ctx.font = 'bold 20px Verdana';
+        ctx.textAlign = 'center';
+        ctx.fillText('!', z.x, AR.floorY - 26 - Math.sin(k * 12) * 3);
+        ctx.restore();
+      } else {
+        ctx.save();
+        var a = 0.16 + Math.sin(z.t * 22) * 0.05;
+        ctx.fillStyle = 'rgba(181,80,47,' + a.toFixed(2) + ')';
+        ctx.beginPath();
+        ctx.ellipse(z.x, AR.floorY, z.r, 16, 0, 0, 7);
+        ctx.fill();
+        ctx.strokeStyle = COL.terra; ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.ellipse(z.x, AR.floorY, z.r, 16, 0, 0, 7);
+        ctx.stroke();
+        for (var i = 0; i < 4; i++) {
+          var lx = z.x - z.r * 0.6 + i * z.r * 0.4;
+          var ly = AR.floorY - ((z.t * 140 + i * 37) % 46);
+          ctx.strokeStyle = COL.terra; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx, ly - 10); ctx.stroke();
+        }
+        ctx.restore();
+      }
+    });
+  }
+  function drawDrops(ctx, g) {
+    g.drops.forEach(function (d) {
+      if (d.life - d.t < 2 && Math.floor(d.t * 8) % 2 === 0) return; // expiring blink
+      var bob = Math.sin(d.t * 4) * 3;
+      var x = d.x, y = AR.floorY - 16 + bob;
+      ctx.save();
+      ctx.fillStyle = COL.shadow;
+      ctx.beginPath(); ctx.ellipse(x, AR.floorY + 4, 12, 4, 0, 0, 7); ctx.fill();
+      // canteen
+      ctx.fillStyle = COL.terra;
+      ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.fill();
+      ctx.strokeStyle = COL.ink; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.stroke();
+      ctx.fillStyle = COL.ink;
+      ctx.fillRect(x - 3, y - 16, 6, 6);
+      ctx.strokeStyle = COL.white; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(x, y, 5, -0.6, 2.2); ctx.stroke();
+      ctx.restore();
+    });
+  }
+  function drawProjectiles(ctx, g) {
+    g.projectiles.forEach(function (p) {
+      if (p.delay > 0) return;
+      ctx.save();
+      if (p.type === 'stone') {
+        ctx.fillStyle = COL.ink;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+      } else if (p.type === 'shock') {
+        // dust crest racing along the ground
+        ctx.fillStyle = COL.dust;
+        ctx.strokeStyle = COL.inkSoft;
+        ctx.lineWidth = 2;
+        for (var i = 0; i < 3; i++) {
+          var h = 22 - i * 6;
+          var off = i * 9 * (p.vx > 0 ? -1 : 1);
+          ctx.beginPath();
+          ctx.moveTo(p.x + off - 8, AR.floorY);
+          ctx.quadraticCurveTo(p.x + off, AR.floorY - h, p.x + off + 8, AR.floorY);
+          ctx.closePath();
+          ctx.fill(); ctx.stroke();
+        }
+      } else if (p.type === 'feather') {
+        var a = Math.atan2(p.vy, p.vx);
+        ctx.translate(p.x, p.y); ctx.rotate(a);
+        ctx.fillStyle = COL.ochre;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 11, 3.5, 0, 0, 7);
+        ctx.fill();
+        ctx.strokeStyle = COL.ink; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(-11, 0); ctx.lineTo(11, 0); ctx.stroke();
+      } else if (p.type === 'bolt') {
+        var b = Math.atan2(p.vy, p.vx);
+        ctx.translate(p.x, p.y); ctx.rotate(b);
+        ctx.strokeStyle = COL.ochre; ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(8, 0); ctx.stroke();
+        ctx.strokeStyle = COL.terra; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(16, 0); ctx.stroke();
+      } else if (p.type === 'rock') {
+        ctx.fillStyle = COL.ink;
+        ctx.strokeStyle = COL.ochre; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(p.x - p.r, p.y + p.r * 0.5);
+        ctx.lineTo(p.x - p.r * 0.6, p.y - p.r);
+        ctx.lineTo(p.x + p.r * 0.7, p.y - p.r * 0.8);
+        ctx.lineTo(p.x + p.r, p.y + p.r * 0.6);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+      ctx.restore();
+    });
+  }
+
+  // ---------- particles & floaters ----------
+  function drawParticles(ctx, g) {
+    g.particles.forEach(function (p) {
+      var k = 1 - p.t / p.life;
+      ctx.save();
+      if (p.col === 'ink') {
+        ctx.fillStyle = COL.ink;
+        ctx.globalAlpha = Math.min(1, k * 1.6);
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (0.5 + k * 0.5), 0, 7); ctx.fill();
+      } else if (p.col === 'terra') {
+        ctx.fillStyle = COL.terra;
+        ctx.globalAlpha = Math.min(1, k * 1.6);
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (0.5 + k * 0.5), 0, 7); ctx.fill();
+      } else if (p.col === 'dust') {
+        ctx.fillStyle = COL.dust;
+        ctx.globalAlpha = k * 0.8;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (1.6 - k * 0.6), 0, 7); ctx.fill();
+      } else if (p.col === 'impact') {
+        // hard manga starburst
+        ctx.translate(p.x, p.y);
+        ctx.globalAlpha = k;
+        ctx.fillStyle = COL.white;
+        ctx.strokeStyle = COL.ink; ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (var i = 0; i < 8; i++) {
+          var a = i * Math.PI / 4;
+          var rr = p.r * (i % 2 ? 0.45 : 1) * (1.2 - k * 0.4);
+          ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+        }
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      } else if (p.col === 'line') {
+        ctx.strokeStyle = COL.inkSoft;
+        ctx.globalAlpha = k * 0.8;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + p.dir * p.r, p.y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+  }
+  function drawFloaters(ctx, g) {
+    g.floaters.forEach(function (f) {
+      var a = f.t < 0.15 ? f.t / 0.15 : Math.max(0, 1 - (f.t - 0.6) / 0.5);
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.fillStyle = f.col === 'terra' ? COL.terra : COL.ink;
+      ctx.font = 'bold 17px Verdana';
+      ctx.textAlign = 'center';
+      ctx.fillText(f.txt, f.x, f.y);
+      ctx.restore();
+    });
+  }
+
+  // ---------- stickman ----------
+  /* Pose = joint angles in radians (0 = down for legs, 0 = horizontal-forward
+     for arms measured from shoulder). Renderer maps pose -> skeleton. */
+  function fighterPose(f, t) {
+    var p = {
+      lean: 0, crouch: 0, bob: 0,
+      armF: { sh: -0.5, el: 0.5 }, armB: { sh: -0.7, el: 0.6 },
+      legF: { hip: 0.12, knee: -0.1 }, legB: { hip: -0.12, knee: 0.1 },
+      weaponAng: 0, weaponBack: false, punch: 0, flap: 0
+    };
+    var s = f.state, T = f.stateT;
+    if (s === 'idle' || s === 'spawn') {
+      p.bob = Math.sin(t * 3 + f.x * 0.01) * 1.6;
+      p.armF = { sh: -1.15, el: 0.9 }; p.armB = { sh: -1.0, el: 1.0 };
+    } else if (s === 'run') {
+      var ph = f.runPhase * 2;
+      p.lean = 0.22 * f.face;
+      p.legF = { hip: Math.sin(ph) * 0.85, knee: -Math.max(0, -Math.sin(ph)) * 1.1 };
+      p.legB = { hip: -Math.sin(ph) * 0.85, knee: -Math.max(0, Math.sin(ph)) * 1.1 };
+      p.armF = { sh: -0.9 - Math.sin(ph) * 0.5, el: 0.7 };
+      p.armB = { sh: -0.9 + Math.sin(ph) * 0.5, el: 0.7 };
+      p.bob = Math.abs(Math.sin(ph)) * 2.4;
+    } else if (s === 'jump') {
+      if (f.vy < 0) {
+        p.legF = { hip: 0.7, knee: -1.5 }; p.legB = { hip: -0.3, knee: -0.9 };
+        p.armF = { sh: -2.4, el: 0.3 }; p.armB = { sh: -2.1, el: 0.3 };
+      } else {
+        p.legF = { hip: 0.35, knee: -0.35 }; p.legB = { hip: -0.45, knee: 0.3 };
+        p.armF = { sh: -1.6, el: 0.4 }; p.armB = { sh: -1.3, el: 0.5 };
+      }
+    } else if (s === 'dash') {
+      p.lean = 0.85 * (f.dashDir || f.face);
+      p.legF = { hip: 0.95, knee: -0.4 }; p.legB = { hip: -0.85, knee: -0.7 };
+      p.armF = { sh: -0.4, el: 0.2 }; p.armB = { sh: -1.9, el: 0.4 };
+    } else if (s === 'hurt') {
+      p.lean = -0.35 * f.face; p.crouch = 4;
+      p.armF = { sh: -2.6, el: 0.2 }; p.armB = { sh: -2.3, el: 0.3 };
+      p.legF = { hip: 0.3, knee: -0.4 }; p.legB = { hip: -0.5, knee: -0.2 };
+    } else if (s === 'dead') {
+      p.dead = true;
+    } else if (s === 'windup') {
+      var k = Math.min(1, T / 0.12);
+      p.crouch = 3;
+      p.armB = { sh: -2.9, el: 0.4 }; p.armF = { sh: -1.2, el: 0.8 };
+      p.weaponAng = -0.9; p.weaponBack = true;
+      p.lean = -0.12 * f.face * k;
+    } else if (s === 'attack') {
+      attackPose(f, p, t);
+    } else if (s === 'leap') {
+      p.legF = { hip: 0.8, knee: -1.6 }; p.legB = { hip: -0.6, knee: -1.2 };
+      p.armB = { sh: -3.0, el: 0.2 };
+      p.lean = 0.15 * f.face;
+    } else if (s === 'land') {
+      p.crouch = 10; p.lean = 0.1 * f.face;
+      p.armF = { sh: -0.4, el: 0.3 }; p.armB = { sh: -0.6, el: 0.3 };
+      p.legF = { hip: 0.55, knee: -1.0 }; p.legB = { hip: -0.55, knee: -0.6 };
+    } else if (s === 'dashTele') {
+      p.crouch = 6; p.lean = 0.4 * f.face;
+      p.armF = { sh: -2.6, el: 0.2 }; p.armB = { sh: -2.4, el: 0.2 };
+    } else if (s === 'dashing' || s === 'charging') {
+      p.lean = 0.75 * (f.dashDir || f.face);
+      p.armF = { sh: -1.9, el: 0.1 }; p.armB = { sh: -1.7, el: 0.1 };
+      p.legF = { hip: 1.0, knee: -0.5 }; p.legB = { hip: -0.9, knee: -0.8 };
+    } else if (s === 'stunned') {
+      p.lean = -0.1 * f.face; p.crouch = 6;
+      p.armF = { sh: -0.2, el: 0.2 }; p.armB = { sh: -0.35, el: 0.2 };
+      p.bob = Math.sin(t * 20) * 1.2;
+    } else if (s === 'hoverHigh' || s === 'hoverLow' || s === 'swoopTele' || s === 'swooping') {
+      p.flap = Math.sin(t * 9) * 0.7;
+      p.legF = { hip: 0.25, knee: -0.5 }; p.legB = { hip: -0.2, knee: -0.55 };
+      p.armF = { sh: -1.5 + p.flap, el: 0.15 };
+      p.armB = { sh: -1.5 - p.flap, el: 0.15 };
+      if (s === 'swoopTele') {
+        p.armF = { sh: -2.9, el: 0 }; p.armB = { sh: -2.7, el: 0 };
+      }
+      if (s === 'swooping') { p.lean = 0.5 * (f.swVx > 0 ? 1 : -1); }
+    } else if (s === 'enter') {
+      p.crouch = 8; p.bob = Math.sin(t * 2) * 2;
+      p.armF = { sh: -1.0, el: 0.7 }; p.armB = { sh: -0.9, el: 0.7 };
+    }
+    return p;
+  }
+
+  function attackPose(f, p, t) {
+    var a = f.attack, w = f.weapon;
+    var spec = a ? a.spec : null;
+    var wkey = w ? w.key : (f.type || 'fists');
+    var ph = a ? a.phase : 'w';
+    var k = a ? Math.min(1, a.t / Math.max(0.001, (ph === 'w' ? (spec ? spec.w : a.specW) : ph === 'a' ? (spec ? spec.a : a.specA) : (spec ? spec.r : a.specR)))) : 0;
+    if (f.kind === 'enemy' || f.kind === 'boss') {
+      // generic enemy/boss swing: overhead chop
+      if (ph === 'w') {
+        p.armB = { sh: -2.9, el: 0.3 }; p.weaponAng = -1.1; p.weaponBack = true;
+        p.lean = -0.1 * f.face; p.crouch = 3;
+      } else if (ph === 'a') {
+        p.armB = { sh: -0.9, el: 0.05 }; p.weaponAng = 0.35;
+        p.lean = 0.28 * f.face;
+        p.legF = { hip: 0.4, knee: -0.4 };
+      } else {
+        p.armB = { sh: -1.2, el: 0.3 }; p.weaponAng = 0.2;
+        p.lean = 0.12 * f.face;
+      }
+      p.armF = { sh: -1.0, el: 0.7 };
+      return;
+    }
+    if (wkey === 'fists') {
+      var step = a ? a.step : 0;
+      if (ph === 'w') { p.armF = { sh: -1.5, el: 1.4 }; p.lean = -0.06 * f.face; }
+      else if (ph === 'a') {
+        p.punch = 1;
+        var front = step !== 1;
+        if (front) p.armF = { sh: -0.05, el: 0.02 };
+        else { p.armB = { sh: -0.05, el: 0.02 }; p.armF = { sh: -1.2, el: 1.1 }; }
+        p.lean = 0.2 * f.face;
+        p.legF = { hip: 0.35, knee: -0.35 }; p.legB = { hip: -0.4, knee: -0.1 };
+      } else { p.armF = { sh: -0.9, el: 0.7 }; p.lean = 0.08 * f.face; }
+    } else if (wkey === 'stick') {
+      if (ph === 'w') {
+        p.armF = { sh: -1.9, el: 0.9 }; p.armB = { sh: -1.7, el: 0.8 };
+        p.weaponAng = -0.5; p.crouch = 3; p.lean = -0.08 * f.face;
+      } else if (ph === 'a') {
+        p.armF = { sh: -0.15, el: 0.05 }; p.armB = { sh: -0.35, el: 0.1 };
+        p.weaponAng = 0; p.lean = 0.24 * f.face;
+        p.legF = { hip: 0.5, knee: -0.45 }; p.legB = { hip: -0.55, knee: -0.05 };
+      } else {
+        p.armF = { sh: -0.7, el: 0.4 }; p.armB = { sh: -0.8, el: 0.4 };
+        p.weaponAng = 0.15; p.lean = 0.1 * f.face;
+      }
+    } else if (wkey === 'machete') {
+      if (ph === 'w') {
+        p.armF = { sh: -2.7, el: 0.25 }; p.weaponAng = -1.3;
+        p.lean = -0.15 * f.face; p.crouch = 4;
+      } else if (ph === 'a') {
+        p.armF = { sh: -0.6, el: 0.05 }; p.weaponAng = 0.55;
+        p.lean = 0.3 * f.face;
+        p.legF = { hip: 0.45, knee: -0.4 };
+      } else {
+        p.armF = { sh: -1.1, el: 0.3 }; p.weaponAng = 0.3;
+        p.lean = 0.14 * f.face;
+      }
+    } else if (wkey === 'spear') {
+      if (ph === 'w') {
+        p.armB = { sh: -1.6, el: 0.9 }; p.armF = { sh: -1.1, el: 0.8 };
+        p.weaponAng = -0.15; p.crouch = 5; p.lean = -0.1 * f.face;
+      } else if (ph === 'a') {
+        p.armB = { sh: -0.1, el: 0.02 }; p.armF = { sh: -0.2, el: 0.05 };
+        p.weaponAng = 0; p.lean = 0.32 * f.face;
+        p.legF = { hip: 0.7, knee: -0.3 }; p.legB = { hip: -0.75, knee: -0.05 };
+      } else {
+        p.armB = { sh: -0.6, el: 0.5 }; p.armF = { sh: -0.7, el: 0.4 };
+        p.weaponAng = 0; p.lean = 0.12 * f.face;
+      }
+    } else if (wkey === 'sledge') {
+      if (ph === 'w') {
+        p.armF = { sh: -3.0, el: 0.15 }; p.weaponAng = -1.5;
+        p.lean = -0.2 * f.face; p.crouch = 6;
+      } else if (ph === 'a') {
+        p.armF = { sh: -0.75, el: 0.02 }; p.weaponAng = 0.9;
+        p.lean = 0.4 * f.face; p.crouch = 10;
+        p.legF = { hip: 0.55, knee: -0.7 }; p.legB = { hip: -0.5, knee: -0.2 };
+      } else {
+        p.armF = { sh: -1.3, el: 0.3 }; p.weaponAng = 0.7;
+        p.lean = 0.18 * f.face; p.crouch = 4;
+      }
+    }
+  }
+
+  function drawFighter(ctx, f, g) {
+    var S = f.scale;
+    var alpha = 1;
+    if (f.state === 'dead') alpha = Math.max(0, 1 - f.stateT / 1.2);
+    if (f.state === 'spawn') alpha = Math.min(1, f.stateT / 0.5);
+    var t = g ? g.t : 0;
+    var pose = fighterPose(f, t);
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    // hard noon shadow
+    if (f.state !== 'dead' || f.stateT < 0.4) {
+      ctx.fillStyle = COL.shadow;
+      ctx.beginPath();
+      ctx.ellipse(f.x, AR.floorY + 5, 22 * S, 5.5 * S, 0, 0, 7);
+      ctx.fill();
+    }
+
+    var legL = 20 * S, torsoL = 26 * S, headR = 9.5 * S;
+    var armU = 13 * S, armL = 12 * S, legU = 12 * S, legLw = 12 * S;
+    var lw = (f.kind === 'boss' ? 6 : 4.6) * S * (f.type === 'brute' ? 1.45 : 1);
+    // player keeps the darkest ink so it always reads on top of enemies
+    var baseCol = f.kind === 'player' ? COL.ink : '#4a4036';
+    var col = f.hitFlash > 0 && Math.floor(f.hitFlash * 30) % 2 === 0 ? COL.terra : baseCol;
+
+    if (pose.dead) {
+      // fallen fighter
+      ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round';
+      var yy = AR.floorY - 6;
+      ctx.beginPath();
+      ctx.moveTo(f.x - 34 * S, yy);
+      ctx.lineTo(f.x + 22 * S, yy);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(f.x + 32 * S, yy - 2, headR, 0, 7); ctx.stroke();
+      ctx.globalAlpha = alpha * 0.8;
+      ctx.beginPath();
+      ctx.moveTo(f.x + 26 * S, yy - headR - 2);
+      ctx.lineTo(f.x + 38 * S, yy - headR - 10);
+      ctx.moveTo(f.x + 38 * S, yy - headR - 2);
+      ctx.lineTo(f.x + 26 * S, yy - headR - 10);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    var hipY = f.y - legL + pose.crouch * S - pose.bob * S * 0.4;
+    // spawn: rise from the sand
+    if (f.state === 'spawn') hipY += (1 - Math.min(1, f.stateT / 0.5)) * 40 * S;
+
+    function J(x, y) { return { x: x, y: y }; }
+    function limb(ox, oy, a1, l1, a2, l2) {
+      // angles: 0 = straight down, positive = forward (facing dir)
+      var x1 = ox + Math.sin(a1) * l1 * f.face, y1 = oy + Math.cos(a1) * l1;
+      var x2 = x1 + Math.sin(a1 + a2) * l2 * f.face, y2 = y1 + Math.cos(a1 + a2) * l2;
+      ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      return J(x2, y2);
+    }
+
+    ctx.strokeStyle = col;
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // back leg, front leg (angles from vertical)
+    limb(f.x, hipY, pose.legB.hip, legU, pose.legB.knee, legLw);
+    limb(f.x, hipY, pose.legF.hip, legU, pose.legF.knee, legLw);
+
+    // torso
+    var shX = f.x + Math.sin(pose.lean) * torsoL * (pose.lean > 0 ? 1 : 1) * f.face;
+    var shY = hipY - Math.cos(pose.lean) * torsoL;
+    ctx.beginPath(); ctx.moveTo(f.x, hipY); ctx.lineTo(shX, shY); ctx.stroke();
+
+    // head
+    var hx = shX + Math.sin(pose.lean) * (headR + 3 * S) * f.face;
+    var hy = shY - Math.cos(pose.lean) * (headR + 3 * S);
+    ctx.beginPath(); ctx.arc(hx, hy, headR, 0, 7); ctx.stroke();
+    // eye dot (facing side)
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(hx + headR * 0.45 * f.face, hy - headR * 0.15, 1.8 * S, 0, 7); ctx.fill();
+
+    // identity: player headband (terracotta), brute bandana, boss details
+    if (f.kind === 'player') {
+      ctx.strokeStyle = COL.terra; ctx.lineWidth = 3.2 * S;
+      ctx.beginPath();
+      ctx.moveTo(hx - headR * 0.9, hy - headR * 0.45);
+      ctx.lineTo(hx + headR * 0.9, hy - headR * 0.45);
+      ctx.stroke();
+      var fl = Math.sin(t * 7) * 3;
+      ctx.beginPath();
+      ctx.moveTo(hx - headR * 0.9, hy - headR * 0.45);
+      ctx.quadraticCurveTo(hx - headR * 1.9, hy - headR * 0.2 + fl, hx - headR * 2.6, hy - headR * 0.6 + fl);
+      ctx.stroke();
+      ctx.strokeStyle = col; ctx.lineWidth = lw;
+    } else if (f.kind === 'boss') {
+      drawBossHead(ctx, f, hx, hy, headR, t);
+    } else if (f.type === 'brute') {
+      ctx.strokeStyle = COL.ochre; ctx.lineWidth = 3 * S;
+      ctx.beginPath();
+      ctx.moveTo(hx - headR, hy - headR * 0.4);
+      ctx.lineTo(hx + headR, hy - headR * 0.4);
+      ctx.stroke();
+      ctx.strokeStyle = col; ctx.lineWidth = lw;
+    } else if (f.type === 'scout') {
+      // little feather
+      ctx.strokeStyle = COL.ochre; ctx.lineWidth = 2.4 * S;
+      ctx.beginPath();
+      ctx.moveTo(hx, hy - headR);
+      ctx.lineTo(hx - 2 * S, hy - headR - 8 * S);
+      ctx.stroke();
+      ctx.strokeStyle = col; ctx.lineWidth = lw;
+    } else if (f.type === 'slinger') {
+      ctx.strokeStyle = COL.ink; ctx.lineWidth = 2.2 * S;
+      ctx.beginPath(); ctx.arc(hx, hy, headR + 2.5 * S, Math.PI * 0.9, Math.PI * 1.7); ctx.stroke();
+    }
+
+    // arms: back then front; front hand carries the weapon
+    var handB = limb(shX, shY, Math.PI + pose.armB.sh * -1 * f.face - (f.face > 0 ? 0 : 0), armU, 0, 0);
+    // (back arm drawn simplified behind torso)
+    var bA = pose.armB;
+    var bx1 = shX + Math.cos(bA.sh) * armU * f.face, by1 = shY + Math.sin(bA.sh) * armU;
+    var bx2 = bx1 + Math.cos(bA.sh + bA.el) * armL * f.face, by2 = by1 + Math.sin(bA.sh + bA.el) * armL;
+    ctx.beginPath(); ctx.moveTo(shX, shY); ctx.lineTo(bx1, by1); ctx.lineTo(bx2, by2); ctx.stroke();
+
+    var fA = pose.armF;
+    var fx1 = shX + Math.cos(fA.sh) * armU * f.face, fy1 = shY + Math.sin(fA.sh) * armU;
+    var fx2 = fx1 + Math.cos(fA.sh + fA.el) * armL * f.face, fy2 = fy1 + Math.sin(fA.sh + fA.el) * armL;
+    ctx.beginPath(); ctx.moveTo(shX, shY); ctx.lineTo(fx1, fy1); ctx.lineTo(fx2, fy2); ctx.stroke();
+
+    // fists dots
+    if (f.kind === 'player' && f.weapon.key === 'fists') {
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(fx2, fy2, 4.5 * S, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(bx2, by2, 4 * S, 0, 7); ctx.fill();
+    }
+
+    // weapon in the front hand
+    drawWeapon(ctx, f, fx2, fy2, pose, S, col, t);
+
+    // telegraph "!" while winding up
+    var winding = (f.state === 'windup' || f.state === 'dashTele' || f.state === 'swoopTele' || f.state === 'stompTele' || f.state === 'rainTele' || (f.attack && f.attack.phase === 'w') || f.wind === 'throwing');
+    if (winding && !f.dead) {
+      ctx.fillStyle = COL.terra;
+      ctx.font = 'bold ' + Math.round(19 * Math.max(1, S)) + 'px Verdana';
+      ctx.textAlign = 'center';
+      ctx.globalAlpha = alpha * (0.75 + Math.sin(t * 24) * 0.25);
+      ctx.fillText('!', hx, hy - headR - 12 * S);
+      ctx.globalAlpha = alpha;
+    }
+
+    // vulture wings when hovering
+    if (f.kind === 'boss' && f.key === 'vulture' && !f.dead) {
+      var wingY = shY - 4;
+      var flap = Math.sin(t * 9) * 0.55;
+      ctx.strokeStyle = col; ctx.lineWidth = 4.5 * S;
+      [-1, 1].forEach(function (side) {
+        ctx.beginPath();
+        ctx.moveTo(shX, wingY);
+        ctx.quadraticCurveTo(
+          shX + side * 30 * S, wingY - (18 + flap * 14) * S,
+          shX + side * 52 * S, wingY - (6 + flap * 20) * S
+        );
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(shX + side * 20 * S, wingY - (14 + flap * 10) * S);
+        ctx.lineTo(shX + side * 34 * S, wingY - (12 + flap * 12) * S);
+        ctx.stroke();
+      });
+    }
+    // El Sol halo
+    if (f.kind === 'boss' && f.key === 'elsol' && !f.dead) {
+      ctx.strokeStyle = COL.ochre; ctx.lineWidth = 3 * S;
+      var pulse = 1 + Math.sin(t * 5) * 0.08 + (f.enraged ? 0.15 : 0);
+      for (var i = 0; i < 10; i++) {
+        var an = i * Math.PI / 5 + t * 0.6;
+        ctx.beginPath();
+        ctx.moveTo(hx + Math.cos(an) * headR * 1.5 * pulse, hy + Math.sin(an) * headR * 1.5 * pulse);
+        ctx.lineTo(hx + Math.cos(an) * headR * (2.1 + (i % 2) * 0.4) * pulse, hy + Math.sin(an) * headR * (2.1 + (i % 2) * 0.4) * pulse);
+        ctx.stroke();
+      }
+      if (f.enraged) {
+        ctx.strokeStyle = COL.terra; ctx.lineWidth = 2 * S;
+        ctx.beginPath(); ctx.arc(hx, hy, headR * 2.6 * pulse, 0, 7); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawBossHead(ctx, f, hx, hy, headR, t) {
+    if (f.key === 'cactus') {
+      // spiky hair
+      ctx.strokeStyle = COL.ink; ctx.lineWidth = 3 * f.scale;
+      for (var i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(hx + i * 4 * f.scale, hy - headR * 0.8);
+        ctx.lineTo(hx + i * 6 * f.scale, hy - headR * (1.5 + Math.abs(i) * 0.18));
+        ctx.stroke();
+      }
+    } else if (f.key === 'sidewinder') {
+      ctx.strokeStyle = COL.terra; ctx.lineWidth = 3 * f.scale;
+      ctx.beginPath();
+      ctx.moveTo(hx - headR, hy - headR * 0.35);
+      ctx.lineTo(hx + headR, hy - headR * 0.35);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(hx - headR, hy - headR * 0.35);
+      ctx.lineTo(hx - headR * 2.1, hy - headR * 0.9);
+      ctx.stroke();
+    } else if (f.key === 'vulture') {
+      // beak + bald head
+      ctx.fillStyle = COL.ochre;
+      ctx.beginPath();
+      ctx.moveTo(hx + headR * 0.7 * f.face, hy);
+      ctx.lineTo(hx + headR * (0.7 + 0.9) * f.face, hy + headR * 0.25);
+      ctx.lineTo(hx + headR * 0.7 * f.face, hy + headR * 0.45);
+      ctx.closePath(); ctx.fill();
+    } else if (f.key === 'titan') {
+      // heavy brow
+      ctx.strokeStyle = COL.ink; ctx.lineWidth = 5 * f.scale;
+      ctx.beginPath();
+      ctx.moveTo(hx - headR * 0.9, hy - headR * 0.35);
+      ctx.lineTo(hx + headR * 0.9, hy - headR * 0.35);
+      ctx.stroke();
+      // cracked chest
+      ctx.lineWidth = 2.2 * f.scale;
+      ctx.beginPath();
+      ctx.moveTo(hx - 4 * f.scale, hy + headR * 1.6);
+      ctx.lineTo(hx + 3 * f.scale, hy + headR * 2.6);
+      ctx.lineTo(hx - 2 * f.scale, hy + headR * 3.6);
+      ctx.stroke();
+    }
+  }
+
+  function drawWeapon(ctx, f, hx, hy, pose, S, col, t) {
+    var ang = pose.weaponAng || 0;
+    var key;
+    if (f.kind === 'player') key = f.weapon.key;
+    else if (f.kind === 'boss') key = { cactus: 'club', sidewinder: 'blades', vulture: null, titan: 'hammer', elsol: null }[f.key];
+    else key = { bandit: 'knife', scout: 'knife', slinger: 'sling', brute: 'club' }[f.type] || null;
+    if (!key) return;
+    ctx.save();
+    ctx.translate(hx, hy);
+    ctx.rotate(ang * f.face + (pose.weaponBack ? -0.5 * f.face : 0));
+    ctx.strokeStyle = col;
+    ctx.lineCap = 'round';
+    if (key === 'stick') {
+      ctx.lineWidth = 4 * S;
+      ctx.beginPath(); ctx.moveTo(-10 * S, 0); ctx.lineTo(64 * S, 0); ctx.stroke();
+      ctx.fillStyle = COL.ochre;
+      ctx.beginPath(); ctx.arc(64 * S, 0, 4.5 * S, 0, 7); ctx.fill();
+    } else if (key === 'machete') {
+      ctx.lineWidth = 4 * S;
+      ctx.beginPath(); ctx.moveTo(-6 * S, 0); ctx.lineTo(14 * S, 0); ctx.stroke();
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(12 * S, -3.5 * S);
+      ctx.lineTo(52 * S, -2 * S);
+      ctx.lineTo(56 * S, 0);
+      ctx.lineTo(12 * S, 3.5 * S);
+      ctx.closePath(); ctx.fill();
+    } else if (key === 'spear') {
+      ctx.lineWidth = 3.4 * S;
+      ctx.beginPath(); ctx.moveTo(-26 * S, 0); ctx.lineTo(78 * S, 0); ctx.stroke();
+      ctx.fillStyle = COL.ink;
+      ctx.beginPath();
+      ctx.moveTo(78 * S, 0); ctx.lineTo(94 * S, -4 * S); ctx.lineTo(94 * S, 4 * S);
+      ctx.closePath(); ctx.fill();
+    } else if (key === 'sledge') {
+      ctx.lineWidth = 4.4 * S;
+      ctx.beginPath(); ctx.moveTo(-14 * S, 0); ctx.lineTo(40 * S, 0); ctx.stroke();
+      ctx.fillStyle = col;
+      ctx.fillRect(32 * S, -12 * S, 14 * S, 24 * S);
+    } else if (key === 'club') {
+      ctx.lineWidth = 7 * S;
+      ctx.beginPath(); ctx.moveTo(-6 * S, 0); ctx.lineTo(54 * S, 0); ctx.stroke();
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(58 * S, 0, 10 * S, 0, 7); ctx.fill();
+    } else if (key === 'knife') {
+      ctx.lineWidth = 3.2 * S;
+      ctx.beginPath(); ctx.moveTo(-4 * S, 0); ctx.lineTo(26 * S, 0); ctx.stroke();
+    } else if (key === 'hammer') {
+      ctx.lineWidth = 6.5 * S;
+      ctx.beginPath(); ctx.moveTo(-16 * S, 0); ctx.lineTo(64 * S, 0); ctx.stroke();
+      ctx.fillStyle = col;
+      ctx.fillRect(54 * S, -20 * S, 22 * S, 40 * S);
+      ctx.strokeStyle = COL.ochre; ctx.lineWidth = 2.5 * S;
+      ctx.strokeRect(54 * S, -20 * S, 22 * S, 40 * S);
+    } else if (key === 'blades') {
+      ctx.lineWidth = 3.4 * S;
+      ctx.beginPath(); ctx.moveTo(-4 * S, 0); ctx.lineTo(46 * S, 0); ctx.stroke();
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.moveTo(44 * S, -2.5 * S); ctx.lineTo(58 * S, 0); ctx.lineTo(44 * S, 2.5 * S); ctx.closePath(); ctx.fill();
+      // second blade in the back hand area
+      ctx.rotate(-0.5);
+      ctx.beginPath(); ctx.moveTo(-4 * S, 0); ctx.lineTo(40 * S, 0); ctx.stroke();
+    } else if (key === 'sling') {
+      ctx.strokeStyle = COL.ink; ctx.lineWidth = 2 * S;
+      ctx.beginPath();
+      ctx.arc(16 * S, 6 * S, 8 * S, 0.4, 3.6);
+      ctx.stroke();
+    }
+    ctx.restore();
+    // swing trail during active frames
+    if (f.attack && f.attack.phase === 'a' && f.kind === 'player') {
+      var w = f.weapon;
+      ctx.save();
+      ctx.globalAlpha = 0.28;
+      ctx.fillStyle = COL.terra;
+      ctx.beginPath();
+      var cx = f.x, cy = f.y - 52 * S;
+      var rr = (w.reach + 14) * S;
+      if (w.key === 'spear') {
+        ctx.fillRect(f.x + (f.face > 0 ? 8 * S : -rr), cy - 9 * S, rr, 18 * S);
+      } else {
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, rr, f.face > 0 ? -0.7 : Math.PI + 0.7, f.face > 0 ? 0.7 : Math.PI - 0.7, f.face < 0);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  // ---------- HUD ----------
+  function drawHUD(ctx, g, i18n) {
+    var p = g.player;
+    // HP bar
+    ctx.save();
+    ctx.translate(38, 18);
+    ctx.fillStyle = COL.white;
+    ctx.strokeStyle = COL.ink; ctx.lineWidth = 3;
+    roundRect(ctx, 0, 0, 220, 24, 6); ctx.fill(); ctx.stroke();
+    var hpw = Math.max(0, p.hp / p.maxHp) * 212;
+    ctx.fillStyle = p.hp < 25 ? (Math.floor(g.t * 6) % 2 ? COL.terra : COL.ochre) : COL.terra;
+    if (hpw > 0) { roundRect(ctx, 4, 4, hpw, 16, 4); ctx.fill(); }
+    // tiny stick head icon
+    ctx.strokeStyle = COL.ink; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(-14, 12, 8, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-14, 20); ctx.lineTo(-14, 30); ctx.stroke();
+    // weapon tag
+    ctx.fillStyle = COL.ink;
+    ctx.font = 'bold 13px Verdana';
+    ctx.textAlign = 'left';
+    ctx.fillText(i18n.weaponName(g.weaponId).toUpperCase(), 4, 42);
+    ctx.restore();
+
+    // score + combo
+    ctx.save();
+    ctx.textAlign = 'right';
+    ctx.fillStyle = COL.ink;
+    ctx.font = 'bold 26px Verdana';
+    ctx.fillText(String(g.score), AR.W - 22, 38);
+    if (g.combo > 0) {
+      ctx.fillStyle = COL.terra;
+      ctx.font = 'bold 17px Verdana';
+      ctx.fillText('x' + C.comboMult(g.combo) + '  ·  ' + g.combo, AR.W - 22, 62);
+      var w = 90 * (g.comboT / C.SCORE.comboWindow);
+      ctx.fillStyle = COL.terra;
+      ctx.fillRect(AR.W - 22 - w, 68, w, 4);
+    }
+    ctx.restore();
+
+    // wave dots
+    var cfg = C.LEVELS[g.level - 1];
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = COL.inkSoft;
+    ctx.font = 'bold 13px Verdana';
+    var label = i18n.t('level') + ' ' + g.level + ' — ' + i18n.levelName(g.level);
+    ctx.fillText(label, AR.W / 2, 26);
+    var total = cfg.waves.length + 1;
+    for (var i = 0; i < total; i++) {
+      var dx = AR.W / 2 - (total - 1) * 14 + i * 28;
+      var done = g.phase !== 'waves' || i < g.waveIdx;
+      var cur = g.phase === 'waves' && i === g.waveIdx;
+      if (i === total - 1) {
+        // skull-ish boss dot
+        ctx.fillStyle = g.phase === 'waves' ? COL.inkSoft : (g.boss && g.boss.dead ? COL.dust : COL.terra);
+        ctx.beginPath(); ctx.arc(dx, 44, cur || g.phase !== 'waves' ? 8 : 6, 0, 7); ctx.fill();
+        ctx.fillStyle = COL.white;
+        ctx.fillRect(dx - 4, 41, 3, 3); ctx.fillRect(dx + 1, 41, 3, 3);
+      } else {
+        ctx.fillStyle = done ? COL.dust : cur ? COL.terra : COL.inkSoft;
+        ctx.beginPath(); ctx.arc(dx, 44, cur ? 7 : 5, 0, 7); ctx.fill();
+      }
+    }
+    ctx.restore();
+
+    // boss bar
+    if (g.boss && !g.boss.dead && g.boss.state !== 'enter') {
+      var b = g.boss;
+      ctx.save();
+      var bw = 470, bx = (AR.W - bw) / 2, by = AR.H - 58;
+      ctx.fillStyle = COL.white;
+      ctx.strokeStyle = COL.ink; ctx.lineWidth = 3;
+      roundRect(ctx, bx, by, bw, 20, 6); ctx.fill(); ctx.stroke();
+      var hpw2 = Math.max(0, b.hp / b.maxHp) * (bw - 8);
+      ctx.fillStyle = b.enraged ? COL.ochre : COL.ink;
+      if (hpw2 > 0) { roundRect(ctx, bx + 4, by + 4, hpw2, 12, 4); ctx.fill(); }
+      ctx.fillStyle = COL.ink;
+      ctx.font = 'bold 15px Verdana';
+      ctx.textAlign = 'center';
+      var nm = i18n.bossName(b.bossIdx).toUpperCase() + '  ·  ' + i18n.bossEpithet(b.bossIdx);
+      ctx.fillText(nm, AR.W / 2, by - 8);
+      if (b.enraged) {
+        ctx.fillStyle = COL.terra;
+        ctx.fillText('!!', bx - 18, by + 16);
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawBanner(ctx, g, i18n) {
+    if (g.bannerT <= 0 || !g.banner) return;
+    var k = g.bannerT;
+    var a = k > 1.3 ? (1.6 - k) / 0.3 : Math.min(1, k / 0.4);
+    var scale = 1 + Math.max(0, k - 1.3) * 1.2;
+    var txt = '', sub = '';
+    var b = g.banner;
+    if (b.kind === 'wave') {
+      txt = i18n.fmt('waveBanner', b.val);
+    } else if (b.kind === 'bossIncoming') {
+      txt = i18n.t('bossIncoming');
+      var idx = C.LEVELS[g.level - 1].boss;
+      sub = i18n.bossName(idx).toUpperCase() + ' · ' + i18n.bossEpithet(idx);
+    } else if (b.kind === 'enrage') {
+      var idx2 = C.LEVELS[g.level - 1].boss;
+      txt = i18n.fmt('enrage', { name: i18n.bossName(idx2).toUpperCase() });
+    } else if (b.kind === 'bossDefeated') {
+      txt = i18n.t('bossDefeated');
+    }
+    ctx.save();
+    ctx.translate(AR.W / 2, 200);
+    ctx.scale(scale, scale);
+    ctx.globalAlpha = Math.max(0, Math.min(1, a));
+    ctx.textAlign = 'center';
+    ctx.fillStyle = COL.ink;
+    ctx.font = 'bold 40px Verdana';
+    ctx.fillText(txt, 0, 0);
+    if (sub) {
+      ctx.fillStyle = COL.terra;
+      ctx.font = 'bold 20px Verdana';
+      ctx.fillText(sub, 0, 32);
+    }
+    ctx.strokeStyle = COL.terra; ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-130, 12); ctx.lineTo(130, 12);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ---------- main frame ----------
+  function render(ctx, g, i18n) {
+    ctx.save();
+    if (g.shake > 0.2) {
+      ctx.translate((Math.random() * 2 - 1) * g.shake, (Math.random() * 2 - 1) * g.shake);
+    }
+    drawBackground(ctx, g.t);
+    drawZones(ctx, g);
+    // draw order: drops, enemies, boss, player, projectiles, particles
+    drawDrops(ctx, g);
+    g.enemies.forEach(function (e) { drawFighter(ctx, e, g); });
+    if (g.boss) drawFighter(ctx, g.boss, g);
+    if (g.phase !== 'lost' || g.player.stateT < 1.4) drawFighter(ctx, g.player, g);
+    drawProjectiles(ctx, g);
+    drawParticles(ctx, g);
+    drawFloaters(ctx, g);
+    ctx.restore();
+    if (!g.noHUD) {
+      drawHUD(ctx, g, i18n);
+      drawBanner(ctx, g, i18n);
+    }
+    // poster frame
+    ctx.strokeStyle = COL.ink; ctx.lineWidth = 6;
+    ctx.strokeRect(3, 3, AR.W - 6, AR.H - 6);
+  }
+
+  // ---------- icons for menus (drawn on small canvases by ui.js) ----------
+  function drawWeaponIcon(ctx, id, cx, cy, sc) {
+    var w = C.WEAPONS[id];
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.strokeStyle = COL.ink; ctx.lineCap = 'round';
+    if (id === 0) {
+      ctx.fillStyle = COL.ink;
+      ctx.beginPath(); ctx.arc(-10 * sc, -6 * sc, 7 * sc, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(10 * sc, 6 * sc, 7 * sc, 0, 7); ctx.fill();
+      ctx.strokeStyle = COL.terra; ctx.lineWidth = 3 * sc;
+      ctx.beginPath(); ctx.moveTo(-2 * sc, -2 * sc); ctx.lineTo(2 * sc, 2 * sc);
+      ctx.moveTo(2 * sc, -2 * sc); ctx.lineTo(-2 * sc, 2 * sc);
+      ctx.stroke();
+    } else if (id === 1) {
+      ctx.lineWidth = 5 * sc;
+      ctx.beginPath(); ctx.moveTo(-20 * sc, 10 * sc); ctx.lineTo(18 * sc, -12 * sc); ctx.stroke();
+      ctx.fillStyle = COL.ochre;
+      ctx.beginPath(); ctx.arc(18 * sc, -12 * sc, 5 * sc, 0, 7); ctx.fill();
+    } else if (id === 2) {
+      ctx.lineWidth = 5 * sc;
+      ctx.beginPath(); ctx.moveTo(-20 * sc, 12 * sc); ctx.lineTo(6 * sc, -4 * sc); ctx.stroke();
+      ctx.fillStyle = COL.ink;
+      ctx.beginPath();
+      ctx.moveTo(4 * sc, -8 * sc); ctx.lineTo(24 * sc, -16 * sc); ctx.lineTo(27 * sc, -12 * sc);
+      ctx.lineTo(8 * sc, 0); ctx.closePath(); ctx.fill();
+    } else if (id === 3) {
+      ctx.lineWidth = 4 * sc;
+      ctx.beginPath(); ctx.moveTo(-26 * sc, 12 * sc); ctx.lineTo(24 * sc, -10 * sc); ctx.stroke();
+      ctx.fillStyle = COL.ink;
+      ctx.beginPath();
+      ctx.moveTo(24 * sc, -10 * sc); ctx.lineTo(34 * sc, -14 * sc); ctx.lineTo(29 * sc, -5 * sc);
+      ctx.closePath(); ctx.fill();
+    } else if (id === 4) {
+      ctx.lineWidth = 5 * sc;
+      ctx.beginPath(); ctx.moveTo(-22 * sc, 12 * sc); ctx.lineTo(16 * sc, -8 * sc); ctx.stroke();
+      ctx.fillStyle = COL.ink;
+      ctx.save(); ctx.translate(16 * sc, -8 * sc); ctx.rotate(-0.45);
+      ctx.fillRect(-4 * sc, -14 * sc, 9 * sc, 24 * sc);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  function drawBossIcon(ctx, idx, cx, cy, sc) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.strokeStyle = COL.ink; ctx.lineWidth = 3.5 * sc; ctx.lineCap = 'round';
+    var bob = 0;
+    if (idx === 2) cy += 0; // vulture
+    // body
+    ctx.beginPath();
+    ctx.moveTo(0, 22 * sc + bob); ctx.lineTo(0, -6 * sc + bob);
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, -14 * sc + bob, 7 * sc, 0, 7); ctx.stroke();
+    // arms
+    ctx.beginPath();
+    ctx.moveTo(0, 0 + bob); ctx.lineTo(-12 * sc, 10 * sc + bob);
+    ctx.moveTo(0, 0 + bob); ctx.lineTo(12 * sc, 10 * sc + bob);
+    ctx.stroke();
+    // legs
+    ctx.beginPath();
+    ctx.moveTo(0, 22 * sc + bob); ctx.lineTo(-9 * sc, 34 * sc + bob);
+    ctx.moveTo(0, 22 * sc + bob); ctx.lineTo(9 * sc, 34 * sc + bob);
+    ctx.stroke();
+    if (idx === 0) { // cactus spikes
+      ctx.beginPath();
+      ctx.moveTo(-5 * sc, -19 * sc); ctx.lineTo(-8 * sc, -25 * sc);
+      ctx.moveTo(5 * sc, -19 * sc); ctx.lineTo(8 * sc, -25 * sc);
+      ctx.stroke();
+    } else if (idx === 1) { // sidewinder band
+      ctx.strokeStyle = COL.terra; ctx.lineWidth = 2.6 * sc;
+      ctx.beginPath(); ctx.moveTo(-7 * sc, -15 * sc); ctx.lineTo(7 * sc, -15 * sc); ctx.stroke();
+    } else if (idx === 2) { // vulture wings
+      ctx.strokeStyle = COL.ink; ctx.lineWidth = 3 * sc;
+      ctx.beginPath();
+      ctx.moveTo(0, -2 * sc); ctx.quadraticCurveTo(-16 * sc, -14 * sc, -22 * sc, -4 * sc);
+      ctx.moveTo(0, -2 * sc); ctx.quadraticCurveTo(16 * sc, -14 * sc, 22 * sc, -4 * sc);
+      ctx.stroke();
+    } else if (idx === 3) { // titan mass
+      ctx.lineWidth = 5 * sc;
+      ctx.beginPath();
+      ctx.moveTo(0, 2 * sc); ctx.lineTo(16 * sc, -12 * sc);
+      ctx.stroke();
+      ctx.fillStyle = COL.ink;
+      ctx.fillRect(12 * sc, -20 * sc, 10 * sc, 12 * sc);
+    } else if (idx === 4) { // el sol rays
+      ctx.strokeStyle = COL.ochre; ctx.lineWidth = 2.2 * sc;
+      for (var i = 0; i < 8; i++) {
+        var a = i * Math.PI / 4;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * 10 * sc, -14 * sc + Math.sin(a) * 10 * sc);
+        ctx.lineTo(Math.cos(a) * 14 * sc, -14 * sc + Math.sin(a) * 14 * sc);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  globalThis.SS_Render = {
+    COL: COL, render: render, drawFighter: drawFighter,
+    drawWeaponIcon: drawWeaponIcon, drawBossIcon: drawBossIcon,
+    fighterPose: fighterPose, roundRect: roundRect
+  };
+})();
+
+</script>
+<script>
+/* Stick Showdown — UI: screens, input (keyboard + touch), game loop, saves.
+   Saves use localStorage when available and silently fall back to memory
+   (the LOB7 reader may isolate storage). */
+(function () {
+  'use strict';
+
+  var C = globalThis.SS_Config, E = globalThis.SS_Engine;
+  var R = globalThis.SS_Render, A = globalThis.SS_Audio, I = globalThis.SS_I18N;
+
+  var SAVE_KEY = 'stickshowdown_v1';
+  var memSave = null;
+  function loadSave() {
+    try {
+      var raw = globalThis.localStorage && localStorage.getItem(SAVE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) { /* storage isolated */ }
+    return memSave || defaultSave();
+  }
+  function persistSave(s) {
+    memSave = s;
+    try {
+      if (globalThis.localStorage) localStorage.setItem(SAVE_KEY, JSON.stringify(s));
+    } catch (e) { /* keep memory copy */ }
+  }
+  function defaultSave() {
+    return {
+      lang: null, muted: false,
+      unlockedLevel: 1, lastWeapon: 0,
+      best: {}, medals: {}
+    };
+  }
+
+  // ---------- state ----------
+  var save = loadSave();
+  var G = null;              // live game or null
+  var menuT = 0;             // menu demo clock
+  var currentScreen = 'title';
+  var selectedLevel = 1;
+  var equippedWeapon = save.lastWeapon || 0;
+  var ctx = null, canvas = null;
+
+  var held = { left: false, right: false };
+  var edges = { jump: false, attack: false, dash: false };
+  var prevButtons = {};
+
+  // ---------- helpers ----------
+  function $(id) { return document.getElementById(id); }
+  function applyI18n() {
+    document.documentElement.lang = I.getLang();
+    var nodes = document.querySelectorAll('[data-i18n]');
+    nodes.forEach(function (n) {
+      n.textContent = I.t(n.getAttribute('data-i18n'));
+    });
+    document.title = I.t('title') + ' — ' + I.t('tagline');
+  }
+  function show(screen) {
+    currentScreen = screen;
+    ['title', 'howto', 'credits', 'levels', 'overlay'].forEach(function (s) {
+      var el = $('screen-' + s);
+      if (el) el.classList.toggle('hidden', s !== screen);
+    });
+    if (screen === 'levels') buildLevelSelect();
+  }
+
+  // ---------- title ----------
+  function initTitle() {
+    $('btn-play').addEventListener('click', function () { A.init(); A.play('ui'); show('levels'); });
+    $('btn-howto').addEventListener('click', function () { A.init(); A.play('ui'); show('howto'); });
+    $('btn-credits').addEventListener('click', function () { A.init(); A.play('ui'); show('credits'); });
+    $('btn-back-howto').addEventListener('click', function () { A.play('ui'); show('title'); });
+    $('btn-back-credits').addEventListener('click', function () { A.play('ui'); show('title'); });
+    $('btn-lang').addEventListener('click', function () {
+      var order = ['en', 'fr', 'es'];
+      var next = order[(order.indexOf(I.getLang()) + 1) % order.length];
+      I.setLang(next); save.lang = next; persistSave(save);
+      A.play('ui'); applyI18n(); refreshToggles();
+    });
+    $('btn-sound').addEventListener('click', function () {
+      A.init();
+      save.muted = !save.muted;
+      A.setEnabled(!save.muted);
+      persistSave(save);
+      A.play('ui'); refreshToggles();
+    });
+  }
+  function refreshToggles() {
+    $('btn-lang').textContent = I.t('language') + ' · ' + I.t('langName');
+    $('btn-sound').textContent = I.t('sound') + ' · ' + I.t(save.muted ? 'off' : 'on');
+  }
+
+  // ---------- level select ----------
+  function buildLevelSelect() {
+    var wrap = $('level-cards');
+    wrap.innerHTML = '';
+    for (var lvl = 1; lvl <= 5; lvl++) {
+      (function (lvl) {
+        var locked = lvl > save.unlockedLevel;
+        var cfg = C.LEVELS[lvl - 1];
+        var card = document.createElement('button');
+        card.className = 'level-card' + (locked ? ' locked' : '');
+        var medal = save.medals[lvl] || 0;
+        var best = save.best[lvl] || 0;
+        card.innerHTML =
+          '<div class="lc-head"><span class="lc-num">' + lvl + '</span>' +
+          '<span class="lc-name">' + I.levelName(lvl) + '</span></div>' +
+          '<canvas class="lc-boss" width="90" height="72"></canvas>' +
+          '<div class="lc-info"><span>' + cfg.waves.length + ' ' + I.t('waves') + ' · ' +
+          I.t('boss') + ' : ' + I.bossName(cfg.boss) + '</span>' +
+          '<span class="lc-medals">' + medalDots(medal) + '</span>' +
+          '<span class="lc-best">' + (best ? I.t('best') + ' : ' + best : (locked ? I.t('locked') : '')) + '</span></div>';
+        if (!locked) {
+          card.addEventListener('click', function () {
+            A.play('ui');
+            selectedLevel = lvl;
+            buildWeaponStrip();
+            $('btn-start').disabled = false;
+            document.querySelectorAll('.level-card').forEach(function (c) { c.classList.remove('sel'); });
+            card.classList.add('sel');
+          });
+        }
+        wrap.appendChild(card);
+        var cv = card.querySelector('.lc-boss');
+        var c2 = cv.getContext('2d');
+        R.drawBossIcon(c2, cfg.boss, 45, 26, locked ? 0.85 : 1.1);
+        if (locked) { c2.globalAlpha = 0.98; c2.fillStyle = 'rgba(232,217,176,0.55)'; c2.fillRect(0, 0, 90, 72); }
+      })(lvl);
+    }
+    buildWeaponStrip();
+    $('btn-back-levels').addEventListener('click', function () { A.play('ui'); show('title'); });
+    $('btn-start').addEventListener('click', function () {
+      A.init(); A.play('start');
+      startGame(selectedLevel, equippedWeapon);
+    });
+    if (selectedLevel <= save.unlockedLevel) {
+      var first = wrap.children[Math.min(selectedLevel, 5) - 1];
+      if (first) { first.classList.add('sel'); }
+    }
+    $('btn-start').disabled = false;
+  }
+  function medalDots(m) {
+    var out = '';
+    for (var i = 1; i <= 3; i++) out += '<span class="dot m' + i + (m >= i ? ' on' : '') + '"></span>';
+    return out;
+  }
+  function buildWeaponStrip() {
+    var strip = $('weapon-strip');
+    strip.innerHTML = '';
+    // weapon w is unlocked when w === 0 (fists) or level w has been cleared
+    var unlockedMax = 0;
+    for (var w = 0; w <= 4; w++) if (w === 0 || save.unlockedLevel > w) unlockedMax = w;
+    for (var id = 0; id <= 4; id++) {
+      (function (id) {
+        var unlocked = id <= unlockedMax;
+        var b = document.createElement('button');
+        b.className = 'weapon-btn' + (unlocked ? '' : ' locked') + (equippedWeapon === id ? ' sel' : '');
+        b.innerHTML = '<canvas width="64" height="44"></canvas>' +
+          '<span class="wb-name">' + I.weaponName(id) + '</span>' +
+          '<span class="wb-desc">' + (unlocked ? I.t(['wFistsD', 'wStickD', 'wMacheteD', 'wSpearD', 'wSledgeD'][id])
+            : I.fmt('unlockBy', { n: id })) + '</span>';
+        if (unlocked) {
+          b.addEventListener('click', function () {
+            equippedWeapon = id; save.lastWeapon = id; persistSave(save);
+            A.play('ui'); buildWeaponStrip();
+          });
+        }
+        strip.appendChild(b);
+        R.drawWeaponIcon(b.querySelector('canvas').getContext('2d'), id, 30, 24, 1);
+      })(id);
+    }
+    if (equippedWeapon > unlockedMax) equippedWeapon = unlockedMax;
+  }
+
+  // ---------- game ----------
+  function startGame(level, weapon) {
+    G = E.newGame(level, weapon, C.makeRng((Date.now() & 0xffff) ^ (level * 7919)));
+    show('none');
+    document.body.classList.add('playing');
+    $('hud-touch').classList.toggle('visible', isTouch());
+  }
+  function quitToMenu() { G = null; document.body.classList.remove('playing'); show('levels'); }
+
+  function finishLevel() {
+    var res = G.result;
+    var isBest = false;
+    if (res.won) {
+      if ((save.best[G.level] || 0) < res.score) { save.best[G.level] = res.score; isBest = true; }
+      if ((save.medals[G.level] || 0) < res.medal) save.medals[G.level] = res.medal;
+      var newUnlock = G.level >= save.unlockedLevel && G.level < 5;
+      if (newUnlock) save.unlockedLevel = G.level + 1;
+      persistSave(save);
+    }
+    var ov = $('ov-panel');
+    var html;
+    if (res.won) {
+      var unlockedW = G.level < 5 ? C.weaponUnlockedByLevel(G.level) : -1;
+      html = '<h2 class="win">' + I.t('victory') + '</h2>' +
+        '<div class="stats">' +
+        statRow(I.t('time'), fmtTime(res.time)) +
+        statRow(I.t('kills'), res.kills) +
+        statRow(I.t('maxCombo'), res.maxCombo) +
+        (res.noHit ? statRow(I.t('noHit'), '+' + C.SCORE.noHitBonus) : '') +
+        (res.fast ? statRow(I.t('timeBonus'), '+' + C.SCORE.timeBonus) : '') +
+        statRow(I.t('total'), '<b>' + res.score + '</b>') +
+        '</div>' +
+        (isBest ? '<div class="newbest">' + I.t('newBest') + '</div>' : '') +
+        (res.medal > 0 ? '<div class="medal-line">' + I.fmt('medalEarned', { m: I.t(['', 'medal1', 'medal2', 'medal3'][res.medal]) }) + '</div>' : '') +
+        (unlockedW >= 1 ? '<div class="unlock-line">' + I.fmt('weaponUnlocked', { w: I.weaponName(unlockedW) }) + '</div>' : '');
+      var btns = [];
+      if (G.level < 5) btns.push(['btn-next', I.t('nextLevel'), function () { A.play('start'); startGame(G.level + 1, equippedWeapon); }]);
+      btns.push(['btn-replay', I.t('replay'), function () { A.play('start'); startGame(G.level, equippedWeapon); }]);
+      btns.push(['btn-menu2', I.t('menu'), function () { A.play('ui'); quitToMenu(); }]);
+      html += '<div class="btn-row" id="ov-btns"></div>';
+      ov.innerHTML = html;
+      var row = $('ov-btns');
+      btns.forEach(function (b) {
+        var el = document.createElement('button');
+        el.className = 'btn ' + (b[0] === 'btn-next' ? 'primary' : '');
+        el.textContent = b[1];
+        el.addEventListener('click', b[2]);
+        row.appendChild(el);
+      });
+      if (unlockedW >= 1) A.play('unlock');
+    } else {
+      html = '<h2 class="lose">' + I.t('defeat') + '</h2>' +
+        '<p class="hint">' + I.t('defeatHint') + '</p>' +
+        '<div class="stats">' + statRow(I.t('total'), '<b>' + res.score + '</b>') + '</div>' +
+        '<div class="btn-row" id="ov-btns"></div>';
+      ov.innerHTML = html;
+      var row2 = $('ov-btns');
+      [['r', I.t('retry'), function () { A.play('start'); startGame(G.level, equippedWeapon); }],
+       ['m', I.t('menu'), function () { A.play('ui'); quitToMenu(); }]].forEach(function (b) {
+        var el = document.createElement('button');
+        el.className = 'btn';
+        el.textContent = b[1];
+        el.addEventListener('click', b[2]);
+        row2.appendChild(el);
+      });
+    }
+    show('overlay');
+  }
+  function statRow(k, v) { return '<div class="srow"><span>' + k + '</span><span>' + v + '</span></div>'; }
+  function fmtTime(s) {
+    var m = Math.floor(s / 60), r = Math.floor(s % 60);
+    return m + ':' + (r < 10 ? '0' : '') + r;
+  }
+
+  var paused = false;
+  function pauseGame() {
+    if (!G || paused) return;
+    paused = true;
+    var ov = $('ov-panel');
+    ov.innerHTML = '<h2>' + I.t('paused') + '</h2><div class="btn-row" id="ov-btns"></div>';
+    show('overlay');
+    var row = $('ov-btns');
+    [['p', I.t('resume'), function () { A.play('ui'); unpause(); }],
+     ['r', I.t('restart'), function () { A.play('start'); paused = false; startGame(G.level, equippedWeapon); }],
+     ['m', I.t('menu'), function () { A.play('ui'); paused = false; quitToMenu(); }]].forEach(function (b) {
+      var el = document.createElement('button');
+      el.className = 'btn';
+      el.textContent = b[1];
+      el.addEventListener('click', b[2]);
+      row.appendChild(el);
+    });
+  }
+  function unpause() { paused = false; show('none'); }
+
+  // ---------- input ----------
+  var KEYS = {
+    ArrowLeft: 'left', KeyA: 'left', KeyQ: 'left',
+    ArrowRight: 'right', KeyD: 'right',
+    ArrowUp: 'jump', KeyW: 'jump', KeyZ: 'jump', Space: 'jump',
+    KeyJ: 'attack', KeyX: 'attack',
+    KeyK: 'dash', ShiftLeft: 'dash', ShiftRight: 'dash'
+  };
+  function initInput() {
+    window.addEventListener('keydown', function (ev) {
+      A.init();
+      if (ev.code === 'Escape' || ev.code === 'KeyP') {
+        if (G && !paused) { pauseGame(); ev.preventDefault(); }
+        else if (paused) { unpause(); ev.preventDefault(); }
+        return;
+      }
+      var k = KEYS[ev.code];
+      if (!k) return;
+      ev.preventDefault();
+      if (k === 'left' || k === 'right') held[k] = true;
+      else if (!ev.repeat) edges[k] = true;
+    });
+    window.addEventListener('keyup', function (ev) {
+      var k = KEYS[ev.code];
+      if (k === 'left' || k === 'right') held[k] = false;
+    });
+    window.addEventListener('blur', function () { held.left = held.right = false; if (G && !paused) pauseGame(); });
+
+    // touch buttons
+    document.querySelectorAll('[data-btn]').forEach(function (b) {
+      var name = b.getAttribute('data-btn');
+      function down(e) {
+        e.preventDefault();
+        A.init();
+        b.classList.add('active');
+        if (name === 'left' || name === 'right') held[name] = true;
+        else edges[name] = true;
+      }
+      function up(e) {
+        e.preventDefault();
+        b.classList.remove('active');
+        if (name === 'left' || name === 'right') held[name] = false;
+      }
+      b.addEventListener('pointerdown', down);
+      b.addEventListener('pointerup', up);
+      b.addEventListener('pointercancel', up);
+      b.addEventListener('pointerleave', up);
+      b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    });
+  }
+  function isTouch() {
+    return (globalThis.matchMedia && matchMedia('(pointer: coarse)').matches) ||
+      'ontouchstart' in window;
+  }
+
+  // ---------- canvas ----------
+  function initCanvas() {
+    canvas = $('game');
+    ctx = canvas.getContext('2d');
+    var dpr = Math.min(2, globalThis.devicePixelRatio || 1);
+    canvas.width = 960 * dpr;
+    canvas.height = 540 * dpr;
+    ctx.scale(dpr, dpr);
+  }
+
+  // ---------- menu demo scene ----------
+  var demo = null;
+  function makeDemo() {
+    var p = E.mkPlayer(0); p.x = 240;
+    var b = E.mkEnemy('bandit', 1, 700, -1);
+    return { t: 0, shake: 0, hitstop: 0, noHUD: true, banner: null, bannerT: 0,
+      enemies: [b], boss: null, projectiles: [], drops: [], zones: [], particles: [], floaters: [],
+      player: p, combo: 0, comboT: 0, score: 0, level: 1, weaponId: 0,
+      phase: 'menu', waveIdx: 0, spawnQueue: [] };
+  }
+
+  // ---------- main loop ----------
+  // rAF with a setTimeout watchdog: some embedded readers throttle rAF
+  // even on visible documents; the fallback keeps the game running.
+  var last = 0, acc = 0, rafPending = false, rafFired = false, rafId = 0;
+  function schedule() {
+    if (rafPending) return;
+    rafPending = true; rafFired = false;
+    rafId = globalThis.requestAnimationFrame(function (ts) {
+      rafFired = true; rafPending = false;
+      loop(ts);
+    });
+    setTimeout(function () {
+      if (rafPending && !rafFired) {
+        cancelAnimationFrame(rafId);
+        rafPending = false;
+        loop(performance.now());
+      }
+    }, 60);
+  }
+  function loop(ts) {
+    schedule();
+    if (!last) last = ts;
+    var dt = Math.min(0.06, (ts - last) / 1000);
+    last = ts;
+
+    if (G && !paused) {
+      acc += dt;
+      var steps = 0;
+      while (acc >= 1 / 60 && steps < 4) {
+        E.update(G, 1 / 60, {
+          left: held.left, right: held.right,
+          jump: edges.jump, attack: edges.attack, dash: edges.dash
+        });
+        edges.jump = edges.attack = edges.dash = false;
+        acc -= 1 / 60;
+        steps++;
+      }
+      if (steps >= 4) acc = 0;
+      E.drainSfx(G).forEach(function (ev) { A.play(ev.name, ev.vol); });
+      if ((G.phase === 'won' && G.phaseT > 1.3) || (G.phase === 'lost' && G.phaseT > 1.7)) {
+        if (!G.result && G.phase === 'lost') G.result = { won: false, score: G.score };
+        finishLevel();
+      }
+    } else {
+      menuT += dt;
+      if (!demo) demo = makeDemo();
+      demo.t = menuT;
+      demo.player.stateT = menuT;
+      demo.enemies[0].stateT = menuT;
+    }
+
+    // render
+    var scene = G || demo;
+    if (scene && ctx) {
+      R.render(ctx, scene, I);
+    }
+  }
+
+  // ---------- boot ----------
+  function init() {
+    if (save.lang) I.setLang(save.lang);
+    else {
+      var nav = (globalThis.navigator && navigator.language || 'en').slice(0, 2).toLowerCase();
+      I.setLang(['en', 'fr', 'es'].indexOf(nav) >= 0 ? nav : 'en');
+    }
+    A.setEnabled(!save.muted);
+    equippedWeapon = save.lastWeapon || 0;
+    initCanvas();
+    initTitle();
+    initInput();
+    applyI18n();
+    refreshToggles();
+    show('title');
+    $('hud-touch').classList.toggle('visible', isTouch() && !!G);
+    schedule();
+    // inert dev hook: only active with #debug in the URL (local verification)
+    if (globalThis.location && /debug/.test(location.hash)) {
+      globalThis.SS_DEBUG = {
+        get game() { return G; },
+        start: function (l, w) { startGame(l, w === undefined ? equippedWeapon : w); },
+        equip: function (w) { equippedWeapon = w; },
+        lang: function (c) { I.setLang(c); applyI18n(); },
+        save: function () { return save; },
+        // synchronous fixed-step pump (for automated verification when the
+        // host throttles rAF/timers); mirrors the loop body exactly
+        step: function (n) {
+          n = n || 1;
+          for (var i = 0; i < n; i++) {
+            if (G && !paused) {
+              E.update(G, 1 / 60, {
+                left: held.left, right: held.right,
+                jump: edges.jump, attack: edges.attack, dash: edges.dash
+              });
+              edges.jump = edges.attack = edges.dash = false;
+              E.drainSfx(G).forEach(function (ev) { A.play(ev.name, ev.vol); });
+              if ((G.phase === 'won' && G.phaseT > 1.3) || (G.phase === 'lost' && G.phaseT > 1.7)) {
+                if (!G.result && G.phase === 'lost') G.result = { won: false, score: G.score };
+                finishLevel();
+              }
+            } else {
+              menuT += 1 / 60;
+              if (!demo) demo = makeDemo();
+              demo.t = menuT;
+              demo.player.stateT = menuT;
+              demo.enemies[0].stateT = menuT;
+            }
+          }
+          if (ctx) R.render(ctx, G || demo, I);
+          return G ? { t: G.t, phase: G.phase } : { menu: true };
+        }
+      };
+    }
+  }
+
+  if (globalThis.document && document.readyState !== 'loading') init();
+  else if (globalThis.document) document.addEventListener('DOMContentLoaded', init);
+
+  globalThis.SS_UI = { init: init };
+})();
+
+</script>
+</body>
+</html>

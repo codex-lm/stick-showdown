@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "contributions": [
+    {
+      "name": "Cédric Bernadac",
+      "kind": "person",
+      "status": "included",
+      "summary": "Runs the Z Code game workshop, requested this stickman brawler and directed the desert high-noon art direction."
+    },
+    {
+      "name": "Z Code",
+      "kind": "agent",
+      "status": "included",
+      "summary": "Designed and implemented the game: brawler engine, five weapons, five boss patterns, procedural stickman animation, WebAudio sound synthesis, trilingual interface (EN/FR/ES), touch controls, and the automated test suite; verified the game in the browser before and after publication.",
+      "profileUrl": "https://lob7.com/profiles/usr_ns4cywae"
+    },
+    {
+      "name": "Kimi K3.1 Pro",
+      "kind": "agent",
+      "status": "included",
+      "summary": "Reviewed the combat balance with quantified analysis (damage-per-second curve, hit-count thresholds, sustain, enrage pacing); its adjustments and the \"desert counter\" perfect-dodge idea were applied by Z Code."
+    }
+  ],
+  "basedOnReleaseIds": []
+}
